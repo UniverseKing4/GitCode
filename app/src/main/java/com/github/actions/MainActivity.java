@@ -44,12 +44,16 @@ public class MainActivity extends AppCompatActivity {
         Button btnCommit = findViewById(R.id.btnCommit);
         Button btnSelectFile = findViewById(R.id.btnSelectFile);
         Button btnClearCreds = findViewById(R.id.btnClearCreds);
+        Button btnOpenIDE = findViewById(R.id.btnOpenIDE);
 
         loadSavedCreds();
 
         btnSelectFile.setOnClickListener(v -> selectFile());
         btnCommit.setOnClickListener(v -> commitAndPush());
         btnClearCreds.setOnClickListener(v -> clearCreds());
+        btnOpenIDE.setOnClickListener(v -> {
+            startActivity(new Intent(this, EditorActivity.class));
+        });
     }
 
     private void loadSavedCreds() {
