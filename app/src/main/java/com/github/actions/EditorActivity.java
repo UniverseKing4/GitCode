@@ -2,18 +2,20 @@ package com.github.actions;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import io.github.rosemoe.sora.widget.CodeEditor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class EditorActivity extends AppCompatActivity {
-    private CodeEditor editor;
+    private EditText editor;
     private String currentFile = "";
     private SharedPreferences prefs;
     private ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -21,12 +23,20 @@ public class EditorActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        editor = new CodeEditor(this);
-        setContentView(editor);
+        
+        ScrollView scrollView = new ScrollView(this);
+        editor = new EditText(this);
+        editor.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        editor.setTypeface(android.graphics.Typeface.MONOSPACE);
+        editor.setTextSize(14);
+        editor.setGravity(android.view.Gravity.TOP | android.view.Gravity.START);
+        editor.setPadding(20, 20, 20, 20);
+        editor.setHorizontallyScrolling(true);
+        scrollView.addView(editor);
+        setContentView(scrollView);
         
         prefs = getSharedPreferences("GitHubCreds", MODE_PRIVATE);
         
-        setSupportActionBar(null);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Code Editor");
         }
@@ -35,9 +45,8 @@ public class EditorActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         menu.add(0, 1, 0, "New File");
-        menu.add(0, 2, 0, "Save");
-        menu.add(0, 3, 0, "Commit & Push");
-        menu.add(0, 4, 0, "Settings");
+        menu.add(0, 2, 0, "Commit & Push");
+        menu.add(0, 3, 0, "Settings");
         return true;
     }
 
@@ -48,12 +57,9 @@ public class EditorActivity extends AppCompatActivity {
                 newFile();
                 return true;
             case 2:
-                saveFile();
-                return true;
-            case 3:
                 commitAndPush();
                 return true;
-            case 4:
+            case 3:
                 showSettings();
                 return true;
         }
@@ -65,6 +71,11 @@ public class EditorActivity extends AppCompatActivity {
         builder.setTitle("New File");
         EditText input = new EditText(this);
         input.setHint("filename.ext");
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(50, 20, 50, 20);
+        input.setLayoutParams(lp);
         builder.setView(input);
         builder.setPositiveButton("Create", (d, w) -> {
             currentFile = input.getText().toString();
@@ -75,14 +86,6 @@ public class EditorActivity extends AppCompatActivity {
         });
         builder.setNegativeButton("Cancel", null);
         builder.show();
-    }
-
-    private void saveFile() {
-        if (currentFile.isEmpty()) {
-            newFile();
-            return;
-        }
-        Toast.makeText(this, "File saved locally", Toast.LENGTH_SHORT).show();
     }
 
     private void commitAndPush() {
@@ -105,6 +108,11 @@ public class EditorActivity extends AppCompatActivity {
         builder.setTitle("Commit Message");
         EditText input = new EditText(this);
         input.setHint("Update " + currentFile);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(50, 20, 50, 20);
+        input.setLayoutParams(lp);
         builder.setView(input);
         builder.setPositiveButton("Push", (d, w) -> {
             String message = input.getText().toString();
@@ -128,8 +136,8 @@ public class EditorActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("GitHub Settings");
         
-        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
-        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(50, 40, 50, 10);
 
         EditText etUser = new EditText(this);
@@ -140,7 +148,7 @@ public class EditorActivity extends AppCompatActivity {
         EditText etToken = new EditText(this);
         etToken.setHint("Token");
         etToken.setText(prefs.getString("token", ""));
-        etToken.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        etToken.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         layout.addView(etToken);
 
         EditText etRepo = new EditText(this);
