@@ -55,6 +55,16 @@ public class IDEActivity extends AppCompatActivity {
         editor.setGravity(Gravity.TOP | Gravity.START);
         editor.setPadding(20, 20, 20, 20);
         editor.setHorizontallyScrolling(true);
+        editor.setBackgroundColor(0xFFFFFFFF);
+        editor.addTextChangedListener(new android.text.TextWatcher() {
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            public void afterTextChanged(android.text.Editable s) {
+                if (currentFile != null) {
+                    applySyntaxHighlighting(currentFile.getName(), s.toString());
+                }
+            }
+        });
         editorScroll.addView(editor);
         mainLayout.addView(editorScroll);
         
@@ -70,8 +80,26 @@ public class IDEActivity extends AppCompatActivity {
         TextView drawerTitle = new TextView(this);
         drawerTitle.setText("Files");
         drawerTitle.setTextSize(20);
-        drawerTitle.setPadding(20, 40, 20, 20);
+        drawerTitle.setPadding(20, 40, 20, 10);
         drawer.addView(drawerTitle);
+        
+        LinearLayout btnContainer = new LinearLayout(this);
+        btnContainer.setOrientation(LinearLayout.HORIZONTAL);
+        btnContainer.setPadding(10, 0, 10, 10);
+        
+        android.widget.Button btnNewFile = new android.widget.Button(this);
+        btnNewFile.setText("+ File");
+        btnNewFile.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        btnNewFile.setOnClickListener(v -> createNewFile());
+        btnContainer.addView(btnNewFile);
+        
+        android.widget.Button btnNewFolder = new android.widget.Button(this);
+        btnNewFolder.setText("+ Folder");
+        btnNewFolder.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        btnNewFolder.setOnClickListener(v -> createNewFolder());
+        btnContainer.addView(btnNewFolder);
+        
+        drawer.addView(btnContainer);
         
         ScrollView fileScroll = new ScrollView(this);
         fileList = new LinearLayout(this);
@@ -95,9 +123,8 @@ public class IDEActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(0, 1, 0, "New File");
-        menu.add(0, 2, 0, "Save");
-        menu.add(0, 3, 0, "Commit & Push All");
+        menu.add(0, 1, 0, "Save");
+        menu.add(0, 2, 0, "Commit & Push All");
         return true;
     }
 
@@ -112,12 +139,9 @@ public class IDEActivity extends AppCompatActivity {
                 }
                 return true;
             case 1:
-                createNewFile();
-                return true;
-            case 2:
                 saveCurrentFile();
                 return true;
-            case 3:
+            case 2:
                 commitAndPushAll();
                 return true;
         }
@@ -125,8 +149,11 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void loadFiles() {
-        fileList.removeAllViews();
-        File dir = new File(projectPath);
+        loadFiles(new File(projectPath), fileList);
+    }
+
+    private void loadFiles(File dir, LinearLayout container) {
+        container.removeAllViews();
         if (!dir.exists()) dir.mkdirs();
         
         File[] files = dir.listFiles();
@@ -134,20 +161,166 @@ public class IDEActivity extends AppCompatActivity {
             TextView empty = new TextView(this);
             empty.setText("No files yet");
             empty.setPadding(20, 20, 20, 20);
-            fileList.addView(empty);
+            container.addView(empty);
             return;
         }
         
         for (File file : files) {
-            if (file.isFile()) {
-                TextView tv = new TextView(this);
+            LinearLayout itemLayout = new LinearLayout(this);
+            itemLayout.setOrientation(LinearLayout.HORIZONTAL);
+            itemLayout.setPadding(5, 5, 5, 5);
+            
+            TextView tv = new TextView(this);
+            if (file.isDirectory()) {
+                tv.setText("📁 " + file.getName());
+                tv.setOnClickListener(v -> expandFolder(file, container));
+            } else {
                 tv.setText("📄 " + file.getName());
-                tv.setPadding(20, 15, 20, 15);
-                tv.setTextSize(16);
                 tv.setOnClickListener(v -> openFile(file));
-                fileList.addView(tv);
+            }
+            tv.setPadding(15, 10, 15, 10);
+            tv.setTextSize(16);
+            tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            itemLayout.addView(tv);
+            
+            TextView btnMenu = new TextView(this);
+            btnMenu.setText("⋮");
+            btnMenu.setTextSize(20);
+            btnMenu.setPadding(10, 0, 10, 0);
+            btnMenu.setOnClickListener(v -> showFileMenu(file));
+            itemLayout.addView(btnMenu);
+            
+            container.addView(itemLayout);
+        }
+    }
+
+    private void expandFolder(File folder, LinearLayout container) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(folder.getName());
+        
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(20, 20, 20, 20);
+        
+        loadFiles(folder, layout);
+        
+        scroll.addView(layout);
+        builder.setView(scroll);
+        builder.setNegativeButton("Close", null);
+        builder.show();
+    }
+
+    private void showFileMenu(File file) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(file.getName());
+        
+        String[] options = file.isDirectory() ? 
+            new String[]{"Rename", "Delete"} : 
+            new String[]{"Open", "Rename", "Delete"};
+        
+        builder.setItems(options, (d, which) -> {
+            if (file.isDirectory()) {
+                switch (which) {
+                    case 0: renameFile(file); break;
+                    case 1: deleteFile(file); break;
+                }
+            } else {
+                switch (which) {
+                    case 0: openFile(file); break;
+                    case 1: renameFile(file); break;
+                    case 2: deleteFile(file); break;
+                }
+            }
+        });
+        builder.show();
+    }
+
+    private void renameFile(File file) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Rename");
+        EditText input = new EditText(this);
+        input.setText(file.getName());
+        input.setPadding(50, 20, 50, 20);
+        builder.setView(input);
+        builder.setPositiveButton("Rename", (d, w) -> {
+            String newName = input.getText().toString().trim();
+            if (newName.isEmpty()) return;
+            
+            File newFile = new File(file.getParent(), newName);
+            if (file.renameTo(newFile)) {
+                if (currentFile != null && currentFile.equals(file)) {
+                    currentFile = newFile;
+                    if (getSupportActionBar() != null) {
+                        getSupportActionBar().setSubtitle(newName);
+                    }
+                }
+                loadFiles();
+                Toast.makeText(this, "Renamed", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Failed to rename", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private void deleteFile(File file) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Delete");
+        builder.setMessage("Delete " + file.getName() + "?");
+        builder.setPositiveButton("Delete", (d, w) -> {
+            if (deleteRecursive(file)) {
+                if (currentFile != null && currentFile.equals(file)) {
+                    currentFile = null;
+                    editor.setText("");
+                    if (getSupportActionBar() != null) {
+                        getSupportActionBar().setSubtitle("");
+                    }
+                }
+                loadFiles();
+                Toast.makeText(this, "Deleted", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Failed to delete", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private boolean deleteRecursive(File file) {
+        if (file.isDirectory()) {
+            File[] files = file.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    deleteRecursive(f);
+                }
             }
         }
+        return file.delete();
+    }
+
+    private void createNewFolder() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("New Folder");
+        EditText input = new EditText(this);
+        input.setHint("folder name");
+        input.setPadding(50, 20, 50, 20);
+        builder.setView(input);
+        builder.setPositiveButton("Create", (d, w) -> {
+            String name = input.getText().toString().trim();
+            if (name.isEmpty()) return;
+            
+            File folder = new File(projectPath, name);
+            if (folder.mkdirs()) {
+                loadFiles();
+                Toast.makeText(this, "Folder created", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Failed to create folder", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
     }
 
     private void openFile(File file) {
@@ -182,14 +355,17 @@ public class IDEActivity extends AppCompatActivity {
         android.text.SpannableStringBuilder spannable = new android.text.SpannableStringBuilder(content);
         
         String[] keywords = getKeywordsForExtension(ext);
-        int color = 0xFF0000FF;
+        int keywordColor = 0xFF0000FF;
+        int stringColor = 0xFF008000;
+        int commentColor = 0xFF808080;
         
+        // Highlight keywords
         for (String keyword : keywords) {
             int start = 0;
             while ((start = content.indexOf(keyword, start)) != -1) {
                 if ((start == 0 || !Character.isLetterOrDigit(content.charAt(start - 1))) &&
                     (start + keyword.length() >= content.length() || !Character.isLetterOrDigit(content.charAt(start + keyword.length())))) {
-                    spannable.setSpan(new android.text.style.ForegroundColorSpan(color),
+                    spannable.setSpan(new android.text.style.ForegroundColorSpan(keywordColor),
                         start, start + keyword.length(),
                         android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                 }
@@ -197,30 +373,100 @@ public class IDEActivity extends AppCompatActivity {
             }
         }
         
+        // Highlight strings
+        highlightPattern(spannable, content, "\"[^\"]*\"", stringColor);
+        highlightPattern(spannable, content, "'[^']*'", stringColor);
+        
+        // Highlight comments
+        highlightPattern(spannable, content, "//.*", commentColor);
+        highlightPattern(spannable, content, "/\\*.*?\\*/", commentColor);
+        highlightPattern(spannable, content, "#.*", commentColor);
+        
+        int selection = editor.getSelectionStart();
         editor.setText(spannable);
-        editor.setSelection(editor.getText().length());
+        if (selection >= 0 && selection <= editor.getText().length()) {
+            editor.setSelection(selection);
+        }
+    }
+
+    private void highlightPattern(android.text.SpannableStringBuilder spannable, String content, String regex, int color) {
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(regex);
+        java.util.regex.Matcher matcher = pattern.matcher(content);
+        while (matcher.find()) {
+            spannable.setSpan(new android.text.style.ForegroundColorSpan(color),
+                matcher.start(), matcher.end(),
+                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
     }
 
     private String[] getKeywordsForExtension(String ext) {
         switch (ext) {
             case "java":
                 return new String[]{"public", "private", "protected", "class", "interface", "extends", "implements", 
-                    "void", "int", "String", "boolean", "if", "else", "for", "while", "return", "new", "this", "super",
-                    "static", "final", "abstract", "try", "catch", "throw", "throws", "import", "package"};
+                    "void", "int", "String", "boolean", "double", "float", "long", "short", "byte", "char",
+                    "if", "else", "for", "while", "do", "switch", "case", "break", "continue", "return", 
+                    "new", "this", "super", "static", "final", "abstract", "synchronized", "volatile",
+                    "try", "catch", "throw", "throws", "finally", "import", "package", "enum", "null", "true", "false"};
             case "js":
             case "jsx":
-                return new String[]{"function", "const", "let", "var", "if", "else", "for", "while", "return", 
-                    "class", "extends", "import", "export", "default", "async", "await", "try", "catch", "throw"};
+            case "ts":
+            case "tsx":
+                return new String[]{"function", "const", "let", "var", "if", "else", "for", "while", "do", "switch", 
+                    "case", "break", "continue", "return", "class", "extends", "implements", "interface",
+                    "import", "export", "default", "async", "await", "try", "catch", "throw", "finally",
+                    "new", "this", "typeof", "instanceof", "null", "undefined", "true", "false"};
             case "py":
                 return new String[]{"def", "class", "if", "elif", "else", "for", "while", "return", "import", 
-                    "from", "as", "try", "except", "finally", "with", "lambda", "yield", "async", "await"};
+                    "from", "as", "try", "except", "finally", "with", "lambda", "yield", "async", "await",
+                    "pass", "break", "continue", "raise", "assert", "del", "global", "nonlocal",
+                    "True", "False", "None", "and", "or", "not", "in", "is"};
             case "html":
             case "xml":
                 return new String[]{"div", "span", "html", "head", "body", "script", "style", "link", "meta", 
-                    "title", "h1", "h2", "h3", "p", "a", "img", "button", "input", "form"};
+                    "title", "h1", "h2", "h3", "h4", "h5", "h6", "p", "a", "img", "button", "input", "form",
+                    "table", "tr", "td", "th", "ul", "ol", "li", "nav", "header", "footer", "section", "article"};
             case "css":
+            case "scss":
+            case "sass":
                 return new String[]{"color", "background", "margin", "padding", "border", "width", "height", 
-                    "display", "flex", "grid", "position", "font", "text"};
+                    "display", "flex", "grid", "position", "top", "left", "right", "bottom",
+                    "font", "text", "align", "justify", "transform", "transition", "animation"};
+            case "c":
+            case "cpp":
+            case "h":
+            case "hpp":
+                return new String[]{"int", "char", "float", "double", "void", "long", "short", "unsigned", "signed",
+                    "if", "else", "for", "while", "do", "switch", "case", "break", "continue", "return",
+                    "struct", "union", "enum", "typedef", "sizeof", "const", "static", "extern",
+                    "include", "define", "ifdef", "ifndef", "endif", "NULL", "true", "false"};
+            case "go":
+                return new String[]{"func", "var", "const", "type", "struct", "interface", "package", "import",
+                    "if", "else", "for", "switch", "case", "break", "continue", "return", "defer", "go",
+                    "chan", "select", "range", "map", "make", "new", "nil", "true", "false"};
+            case "rs":
+                return new String[]{"fn", "let", "mut", "const", "static", "struct", "enum", "trait", "impl",
+                    "if", "else", "for", "while", "loop", "match", "break", "continue", "return",
+                    "pub", "use", "mod", "crate", "self", "super", "true", "false", "None", "Some"};
+            case "php":
+                return new String[]{"function", "class", "interface", "trait", "extends", "implements",
+                    "public", "private", "protected", "static", "final", "abstract",
+                    "if", "else", "elseif", "for", "foreach", "while", "do", "switch", "case", "break", "continue", "return",
+                    "try", "catch", "throw", "finally", "new", "this", "self", "parent",
+                    "true", "false", "null", "echo", "print", "var", "const"};
+            case "rb":
+                return new String[]{"def", "class", "module", "if", "elsif", "else", "unless", "case", "when",
+                    "for", "while", "until", "break", "next", "return", "yield", "begin", "rescue", "ensure", "end",
+                    "true", "false", "nil", "self", "super", "require", "include", "attr_accessor"};
+            case "swift":
+                return new String[]{"func", "var", "let", "class", "struct", "enum", "protocol", "extension",
+                    "if", "else", "guard", "switch", "case", "for", "while", "repeat", "break", "continue", "return",
+                    "import", "public", "private", "internal", "static", "final", "override",
+                    "true", "false", "nil", "self", "super", "try", "catch", "throw"};
+            case "kt":
+                return new String[]{"fun", "val", "var", "class", "interface", "object", "companion",
+                    "if", "else", "when", "for", "while", "do", "break", "continue", "return",
+                    "public", "private", "protected", "internal", "open", "abstract", "final", "override",
+                    "true", "false", "null", "this", "super", "import", "package"};
             default:
                 return new String[]{};
         }
