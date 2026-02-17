@@ -125,6 +125,8 @@ public class ProjectsActivity extends AppCompatActivity {
         }
         
         String[] projectArray = projects.split(";");
+        StringBuilder validProjects = new StringBuilder();
+        
         for (String project : projectArray) {
             if (project.isEmpty()) continue;
             String[] parts = project.split("\\|");
@@ -133,11 +135,69 @@ public class ProjectsActivity extends AppCompatActivity {
             String name = parts[0];
             String path = parts[1];
             
+            File dir = new File(path);
+            if (!dir.exists()) continue;
+            
+            validProjects.append(project).append(";");
+            
+            LinearLayout projectItem = new LinearLayout(this);
+            projectItem.setOrientation(LinearLayout.HORIZONTAL);
+            projectItem.setPadding(0, 5, 0, 5);
+            
             Button btn = new Button(this);
             btn.setText("📁 " + name);
+            btn.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
             btn.setOnClickListener(v -> openProject(name, path));
-            projectsList.addView(btn);
+            projectItem.addView(btn);
+            
+            Button btnEdit = new Button(this);
+            btnEdit.setText("✏");
+            btnEdit.setOnClickListener(v -> editProject(name, path));
+            projectItem.addView(btnEdit);
+            
+            Button btnDelete = new Button(this);
+            btnDelete.setText("🗑");
+            btnDelete.setOnClickListener(v -> deleteProject(name, path));
+            projectItem.addView(btnDelete);
+            
+            projectsList.addView(projectItem);
         }
+        
+        prefs.edit().putString("projects", validProjects.toString()).apply();
+    }
+
+    private void editProject(String oldName, String path) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Edit Project Name");
+        EditText input = new EditText(this);
+        input.setText(oldName);
+        input.setPadding(50, 20, 50, 20);
+        builder.setView(input);
+        builder.setPositiveButton("Save", (d, w) -> {
+            String newName = input.getText().toString().trim();
+            if (newName.isEmpty() || newName.equals(oldName)) return;
+            
+            String projects = prefs.getString("projects", "");
+            projects = projects.replace(oldName + "|" + path, newName + "|" + path);
+            prefs.edit().putString("projects", projects).apply();
+            loadProjects();
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private void deleteProject(String name, String path) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Delete Project");
+        builder.setMessage("Remove '" + name + "' from list? (Files will not be deleted)");
+        builder.setPositiveButton("Delete", (d, w) -> {
+            String projects = prefs.getString("projects", "");
+            projects = projects.replace(name + "|" + path + ";", "");
+            prefs.edit().putString("projects", projects).apply();
+            loadProjects();
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
     }
 
     private void openProject(String name, String path) {
@@ -167,17 +227,11 @@ public class ProjectsActivity extends AppCompatActivity {
         etToken.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
         layout.addView(etToken);
 
-        EditText etRepo = new EditText(this);
-        etRepo.setHint("Repository (optional - uses project name)");
-        etRepo.setText(creds.getString("repo", ""));
-        layout.addView(etRepo);
-
         builder.setView(layout);
         builder.setPositiveButton("Save", (d, w) -> {
             creds.edit()
                 .putString("username", etUser.getText().toString())
                 .putString("token", etToken.getText().toString())
-                .putString("repo", etRepo.getText().toString())
                 .apply();
             Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show();
         });

@@ -87,6 +87,7 @@ public class IDEActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(projectName);
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setHomeAsUpIndicator(android.R.drawable.ic_menu_sort_by_size);
         }
         
         loadFiles();
@@ -104,7 +105,11 @@ public class IDEActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case android.R.id.home:
-                drawerLayout.openDrawer(Gravity.START);
+                if (drawerLayout.isDrawerOpen(Gravity.START)) {
+                    drawerLayout.closeDrawer(Gravity.START);
+                } else {
+                    drawerLayout.openDrawer(Gravity.START);
+                }
                 return true;
             case 1:
                 createNewFile();
@@ -153,13 +158,71 @@ public class IDEActivity extends AppCompatActivity {
             fis.close();
             
             currentFile = file;
-            editor.setText(new String(data));
+            String content = new String(data);
+            editor.setText(content);
+            
+            applySyntaxHighlighting(file.getName(), content);
+            
             if (getSupportActionBar() != null) {
                 getSupportActionBar().setSubtitle(file.getName());
             }
             drawerLayout.closeDrawer(Gravity.START);
         } catch (Exception e) {
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void applySyntaxHighlighting(String fileName, String content) {
+        String ext = "";
+        int i = fileName.lastIndexOf('.');
+        if (i > 0) {
+            ext = fileName.substring(i + 1).toLowerCase();
+        }
+        
+        android.text.SpannableStringBuilder spannable = new android.text.SpannableStringBuilder(content);
+        
+        String[] keywords = getKeywordsForExtension(ext);
+        int color = 0xFF0000FF;
+        
+        for (String keyword : keywords) {
+            int start = 0;
+            while ((start = content.indexOf(keyword, start)) != -1) {
+                if ((start == 0 || !Character.isLetterOrDigit(content.charAt(start - 1))) &&
+                    (start + keyword.length() >= content.length() || !Character.isLetterOrDigit(content.charAt(start + keyword.length())))) {
+                    spannable.setSpan(new android.text.style.ForegroundColorSpan(color),
+                        start, start + keyword.length(),
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
+                start += keyword.length();
+            }
+        }
+        
+        editor.setText(spannable);
+        editor.setSelection(editor.getText().length());
+    }
+
+    private String[] getKeywordsForExtension(String ext) {
+        switch (ext) {
+            case "java":
+                return new String[]{"public", "private", "protected", "class", "interface", "extends", "implements", 
+                    "void", "int", "String", "boolean", "if", "else", "for", "while", "return", "new", "this", "super",
+                    "static", "final", "abstract", "try", "catch", "throw", "throws", "import", "package"};
+            case "js":
+            case "jsx":
+                return new String[]{"function", "const", "let", "var", "if", "else", "for", "while", "return", 
+                    "class", "extends", "import", "export", "default", "async", "await", "try", "catch", "throw"};
+            case "py":
+                return new String[]{"def", "class", "if", "elif", "else", "for", "while", "return", "import", 
+                    "from", "as", "try", "except", "finally", "with", "lambda", "yield", "async", "await"};
+            case "html":
+            case "xml":
+                return new String[]{"div", "span", "html", "head", "body", "script", "style", "link", "meta", 
+                    "title", "h1", "h2", "h3", "p", "a", "img", "button", "input", "form"};
+            case "css":
+                return new String[]{"color", "background", "margin", "padding", "border", "width", "height", 
+                    "display", "flex", "grid", "position", "font", "text"};
+            default:
+                return new String[]{};
         }
     }
 
