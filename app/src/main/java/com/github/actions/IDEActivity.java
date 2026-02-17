@@ -94,10 +94,9 @@ public class IDEActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(0, 1, 0, "Files");
-        menu.add(0, 2, 0, "New File");
-        menu.add(0, 3, 0, "Save");
-        menu.add(0, 4, 0, "Commit & Push");
+        menu.add(0, 1, 0, "New File");
+        menu.add(0, 2, 0, "Save");
+        menu.add(0, 3, 0, "Commit & Push All");
         return true;
     }
 
@@ -105,19 +104,16 @@ public class IDEActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case android.R.id.home:
-                finish();
-                return true;
-            case 1:
                 drawerLayout.openDrawer(Gravity.START);
                 return true;
-            case 2:
+            case 1:
                 createNewFile();
                 return true;
-            case 3:
+            case 2:
                 saveCurrentFile();
                 return true;
-            case 4:
-                commitAndPush();
+            case 3:
+                commitAndPushAll();
                 return true;
         }
         return super.onOptionsItemSelected(item);
@@ -215,27 +211,23 @@ public class IDEActivity extends AppCompatActivity {
         }
     }
 
-    private void commitAndPush() {
-        if (currentFile == null) {
-            Toast.makeText(this, "No file open", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        
-        saveCurrentFile();
-        
+    private void commitAndPushAll() {
         String username = prefs.getString("username", "");
         String token = prefs.getString("token", "");
-        String repo = prefs.getString("repo", "");
         
-        if (username.isEmpty() || token.isEmpty() || repo.isEmpty()) {
+        if (username.isEmpty() || token.isEmpty()) {
             Toast.makeText(this, "Configure GitHub settings first", Toast.LENGTH_LONG).show();
             return;
         }
         
+        if (currentFile != null) {
+            saveCurrentFile();
+        }
+        
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Commit Message");
+        builder.setTitle("Commit & Push All Files");
         EditText input = new EditText(this);
-        input.setHint("Update " + currentFile.getName());
+        input.setHint("Commit message");
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -244,19 +236,47 @@ public class IDEActivity extends AppCompatActivity {
         builder.setView(input);
         builder.setPositiveButton("Push", (d, w) -> {
             String message = input.getText().toString();
-            if (message.isEmpty()) message = "Update " + currentFile.getName();
-            pushToGitHub(username, token, repo, currentFile.getName(), editor.getText().toString(), message);
+            if (message.isEmpty()) message = "Update project";
+            pushAllToGitHub(username, token, projectName, message);
         });
         builder.setNegativeButton("Cancel", null);
         builder.show();
     }
 
-    private void pushToGitHub(String username, String token, String repo, String file, String content, String message) {
-        Toast.makeText(this, "Pushing to GitHub...", Toast.LENGTH_SHORT).show();
+    private void pushAllToGitHub(String username, String token, String repo, String message) {
+        Toast.makeText(this, "Pushing all files to GitHub...", Toast.LENGTH_SHORT).show();
         executor.execute(() -> {
             GitHubAPI api = new GitHubAPI(username, token, repo);
-            String result = api.commitAndPush(file, content, message);
-            runOnUiThread(() -> Toast.makeText(this, result, Toast.LENGTH_LONG).show());
+            File dir = new File(projectPath);
+            File[] files = dir.listFiles();
+            
+            if (files == null || files.length == 0) {
+                runOnUiThread(() -> Toast.makeText(this, "No files to push", Toast.LENGTH_SHORT).show());
+                return;
+            }
+            
+            int success = 0;
+            for (File file : files) {
+                if (file.isFile()) {
+                    try {
+                        FileInputStream fis = new FileInputStream(file);
+                        byte[] data = new byte[(int) file.length()];
+                        fis.read(data);
+                        fis.close();
+                        
+                        String content = new String(data);
+                        String result = api.commitAndPush(file.getName(), content, message);
+                        if (result.contains("Success")) {
+                            success++;
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            
+            int finalSuccess = success;
+            runOnUiThread(() -> Toast.makeText(this, "Pushed " + finalSuccess + " files successfully", Toast.LENGTH_LONG).show());
         });
     }
 

@@ -168,7 +168,7 @@ public class ProjectsActivity extends AppCompatActivity {
         layout.addView(etToken);
 
         EditText etRepo = new EditText(this);
-        etRepo.setHint("Repository");
+        etRepo.setHint("Repository (optional - uses project name)");
         etRepo.setText(creds.getString("repo", ""));
         layout.addView(etRepo);
 
