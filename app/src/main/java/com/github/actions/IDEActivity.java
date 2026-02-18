@@ -220,6 +220,14 @@ public class IDEActivity extends AppCompatActivity {
             tv.setPadding(5, 10, 15, 10);
             tv.setTextSize(16);
             tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            
+            tv.setOnLongClickListener(v -> {
+                if (!selectionMode) {
+                    enterSelectionMode(file);
+                }
+                return true;
+            });
+            
             rowLayout.addView(tv);
             
             LinearLayout subContainer = new LinearLayout(this);
@@ -259,9 +267,20 @@ public class IDEActivity extends AppCompatActivity {
             tv.setPadding(15, 10, 15, 10);
             tv.setTextSize(16);
             tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-            if (!selectionMode) {
-                tv.setOnClickListener(v -> openFile(file));
-            }
+            
+            tv.setOnClickListener(v -> {
+                if (!selectionMode) {
+                    openFile(file);
+                }
+            });
+            
+            tv.setOnLongClickListener(v -> {
+                if (!selectionMode) {
+                    enterSelectionMode(file);
+                }
+                return true;
+            });
+            
             rowLayout.addView(tv);
             
             if (!selectionMode) {
@@ -279,41 +298,59 @@ public class IDEActivity extends AppCompatActivity {
         container.addView(itemLayout);
     }
 
+    private void enterSelectionMode(File file) {
+        selectionMode = true;
+        selectedFiles.clear();
+        selectedFiles.add(file);
+        loadFiles();
+        showSelectionMenu();
+    }
+
     private void toggleSelectionMode() {
         selectionMode = !selectionMode;
         selectedFiles.clear();
         
         if (selectionMode) {
-            showSelectionActions();
+            loadFiles();
+            showSelectionMenu();
+        } else {
+            loadFiles();
         }
-        
-        loadFiles();
     }
 
-    private void showSelectionActions() {
+    private void showSelectionMenu() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Selected: " + selectedFiles.size());
+        builder.setCancelable(false);
         
-        String[] options = new String[]{"Move", "Delete", "Cancel Selection"};
+        String[] options = new String[]{"Move", "Delete", "Done"};
         
         builder.setItems(options, (d, which) -> {
             switch (which) {
-                case 0: moveSelectedFiles(); break;
-                case 1: deleteSelectedFiles(); break;
+                case 0: 
+                    moveSelectedFiles(); 
+                    break;
+                case 1: 
+                    deleteSelectedFiles(); 
+                    break;
                 case 2: 
-                    selectionMode = false;
-                    selectedFiles.clear();
-                    loadFiles();
+                    exitSelectionMode();
                     break;
             }
         });
-        builder.setOnCancelListener(d -> showSelectionActions());
         builder.show();
+    }
+
+    private void exitSelectionMode() {
+        selectionMode = false;
+        selectedFiles.clear();
+        loadFiles();
     }
 
     private void moveSelectedFiles() {
         if (selectedFiles.isEmpty()) {
             Toast.makeText(this, "No files selected", Toast.LENGTH_SHORT).show();
+            showSelectionMenu();
             return;
         }
         
@@ -347,11 +384,9 @@ public class IDEActivity extends AppCompatActivity {
             }
             
             Toast.makeText(this, "Moved " + moved + " files", Toast.LENGTH_SHORT).show();
-            selectionMode = false;
-            selectedFiles.clear();
-            loadFiles();
+            exitSelectionMode();
         });
-        builder.setNegativeButton("Cancel", (d, w) -> showSelectionActions());
+        builder.setNegativeButton("Cancel", (d, w) -> showSelectionMenu());
         builder.show();
     }
 
@@ -370,6 +405,7 @@ public class IDEActivity extends AppCompatActivity {
     private void deleteSelectedFiles() {
         if (selectedFiles.isEmpty()) {
             Toast.makeText(this, "No files selected", Toast.LENGTH_SHORT).show();
+            showSelectionMenu();
             return;
         }
         
@@ -383,11 +419,9 @@ public class IDEActivity extends AppCompatActivity {
                 }
             }
             Toast.makeText(this, "Deleted " + deleted + " items", Toast.LENGTH_SHORT).show();
-            selectionMode = false;
-            selectedFiles.clear();
-            loadFiles();
+            exitSelectionMode();
         });
-        builder.setNegativeButton("Cancel", (d, w) -> showSelectionActions());
+        builder.setNegativeButton("Cancel", (d, w) -> showSelectionMenu());
         builder.show();
     }
 
@@ -812,14 +846,22 @@ public class IDEActivity extends AppCompatActivity {
             GitHubAPI api = new GitHubAPI(username, token, repo);
             File dir = new File(projectPath);
             
-            int success = pushDirectory(api, dir, "", message);
+            java.util.List<String> results = new java.util.ArrayList<>();
+            int success = pushDirectory(api, dir, "", message, results);
             
             int finalSuccess = success;
-            runOnUiThread(() -> Toast.makeText(this, "Pushed " + finalSuccess + " files successfully", Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> {
+                Toast.makeText(this, "Pushed " + finalSuccess + " files successfully", Toast.LENGTH_LONG).show();
+                // Show detailed results
+                if (!results.isEmpty()) {
+                    String summary = String.join("\n", results.subList(0, Math.min(5, results.size())));
+                    android.util.Log.d("GitCode", "Push results:\n" + summary);
+                }
+            });
         });
     }
 
-    private int pushDirectory(GitHubAPI api, File dir, String relativePath, String message) {
+    private int pushDirectory(GitHubAPI api, File dir, String relativePath, String message, java.util.List<String> results) {
         int success = 0;
         File[] files = dir.listFiles();
         
@@ -830,7 +872,7 @@ public class IDEActivity extends AppCompatActivity {
         for (File file : files) {
             if (file.isDirectory()) {
                 String newPath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
-                success += pushDirectory(api, file, newPath, message);
+                success += pushDirectory(api, file, newPath, message, results);
             } else {
                 try {
                     FileInputStream fis = new FileInputStream(file);
@@ -841,10 +883,12 @@ public class IDEActivity extends AppCompatActivity {
                     String content = new String(data);
                     String filePath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
                     String result = api.commitAndPush(filePath, content, message);
+                    results.add(filePath + ": " + result);
                     if (result.contains("Success")) {
                         success++;
                     }
                 } catch (Exception e) {
+                    results.add(file.getName() + ": Error - " + e.getMessage());
                     e.printStackTrace();
                 }
             }
