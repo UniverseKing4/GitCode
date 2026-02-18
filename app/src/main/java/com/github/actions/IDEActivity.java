@@ -138,9 +138,11 @@ public class IDEActivity extends AppCompatActivity {
         editor.setVerticalScrollBarEnabled(false);
         
         // Sync line numbers scroll with editor
-        editorScroll.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
-            lineNumberContainer.scrollTo(0, scrollY);
-        });
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            editorScroll.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+                lineNumberContainer.scrollTo(0, scrollY);
+            });
+        }
         
         editorScroll.addView(editor);
         editorContainer.addView(editorScroll);
@@ -204,9 +206,6 @@ public class IDEActivity extends AppCompatActivity {
                 isProcessing = true;
                 
                 String text = s.toString();
-                
-                // Update line numbers
-                updateLineNumbers(lineNumbers, text);
                 
                 // Update line numbers
                 updateLineNumbers(lineNumbers, text);
