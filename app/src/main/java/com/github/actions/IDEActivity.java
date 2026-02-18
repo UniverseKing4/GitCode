@@ -1383,36 +1383,58 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void pushAllToGitHub(String username, String token, String repo, String message) {
-        Toast.makeText(this, "Checking for changes...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Syncing changes...", Toast.LENGTH_SHORT).show();
         executor.execute(() -> {
             GitHubAPI api = new GitHubAPI(username, token, repo);
             File dir = new File(projectPath);
             
-            // Get last push timestamps
+            // Get last push data
             SharedPreferences pushPrefs = getSharedPreferences("GitCodePush_" + projectName, MODE_PRIVATE);
             
+            // Track current files
+            java.util.Set<String> currentFiles = new java.util.HashSet<>();
             java.util.List<String> results = new java.util.ArrayList<>();
-            int success = pushModifiedFiles(api, dir, "", message, results, pushPrefs);
             
-            // Update timestamps
+            // Push modified/added files
+            int pushed = pushModifiedFiles(api, dir, "", message, results, pushPrefs, currentFiles);
+            
+            // Detect and delete removed files
+            java.util.Set<String> previousFiles = pushPrefs.getStringSet("pushedFiles", new java.util.HashSet<>());
+            int deleted = 0;
+            for (String oldFile : previousFiles) {
+                if (!currentFiles.contains(oldFile) && !oldFile.endsWith("/.gitkeep")) {
+                    String result = api.deleteFile(oldFile, message);
+                    if (result.contains("Success")) {
+                        deleted++;
+                        results.add(oldFile + ": Deleted");
+                    }
+                }
+            }
+            
+            // Update tracking
             SharedPreferences.Editor editor = pushPrefs.edit();
-            long currentTime = System.currentTimeMillis();
-            editor.putLong("lastPushTime", currentTime);
+            editor.putLong("lastPushTime", System.currentTimeMillis());
+            editor.putStringSet("pushedFiles", currentFiles);
             editor.apply();
             
-            int finalSuccess = success;
+            int finalPushed = pushed;
+            int finalDeleted = deleted;
             runOnUiThread(() -> {
-                if (finalSuccess > 0) {
-                    Toast.makeText(this, "Pushed " + finalSuccess + " modified files", Toast.LENGTH_LONG).show();
+                if (finalPushed > 0 || finalDeleted > 0) {
+                    String msg = "";
+                    if (finalPushed > 0) msg += finalPushed + " pushed";
+                    if (finalDeleted > 0) msg += (msg.isEmpty() ? "" : ", ") + finalDeleted + " deleted";
+                    Toast.makeText(this, "✓ " + msg, Toast.LENGTH_LONG).show();
                 } else {
-                    Toast.makeText(this, "No changes to push", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "No changes to sync", Toast.LENGTH_SHORT).show();
                 }
             });
         });
     }
 
     private int pushModifiedFiles(GitHubAPI api, File dir, String relativePath, String message, 
-                                   java.util.List<String> results, SharedPreferences pushPrefs) {
+                                   java.util.List<String> results, SharedPreferences pushPrefs,
+                                   java.util.Set<String> currentFiles) {
         int success = 0;
         File[] files = dir.listFiles();
         
@@ -1420,33 +1442,30 @@ public class IDEActivity extends AppCompatActivity {
             return 0;
         }
         
-        long lastPushTime = pushPrefs.getLong("lastPushTime", 0);
-        
         for (File file : files) {
             if (file.isDirectory()) {
                 String newPath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
                 
-                // Check if folder is empty
                 File[] subFiles = file.listFiles();
                 if (subFiles == null || subFiles.length == 0) {
-                    // Push .gitkeep for empty folders
                     String gitkeepPath = newPath + "/.gitkeep";
+                    currentFiles.add(gitkeepPath);
                     long gitkeepTime = pushPrefs.getLong(gitkeepPath, 0);
                     if (gitkeepTime == 0) {
                         String result = api.commitAndPush(gitkeepPath, "", message);
-                        results.add(gitkeepPath + ": " + result);
                         if (result.contains("Success")) {
                             pushPrefs.edit().putLong(gitkeepPath, System.currentTimeMillis()).apply();
                             success++;
                         }
                     }
                 } else {
-                    success += pushModifiedFiles(api, file, newPath, message, results, pushPrefs);
+                    success += pushModifiedFiles(api, file, newPath, message, results, pushPrefs, currentFiles);
                 }
             } else {
-                // Check if file was modified since last push
                 long fileModified = file.lastModified();
                 String filePath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
+                currentFiles.add(filePath);
+                
                 long lastPushed = pushPrefs.getLong(filePath, 0);
                 
                 if (fileModified > lastPushed) {
@@ -1458,13 +1477,11 @@ public class IDEActivity extends AppCompatActivity {
                         
                         String content = new String(data);
                         String result = api.commitAndPush(filePath, content, message);
-                        results.add(filePath + ": " + result);
                         if (result.contains("Success")) {
                             pushPrefs.edit().putLong(filePath, fileModified).apply();
                             success++;
                         }
                     } catch (Exception e) {
-                        results.add(file.getName() + ": Error - " + e.getMessage());
                         e.printStackTrace();
                     }
                 }

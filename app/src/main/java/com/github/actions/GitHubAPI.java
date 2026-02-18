@@ -46,6 +46,38 @@ public class GitHubAPI {
         }
     }
 
+    public String deleteFile(String path, String message) {
+        try {
+            String url = "https://api.github.com/repos/" + username + "/" + repo + "/contents/" + path;
+            String sha = getFileSha(url);
+            
+            if (sha == null) {
+                return "Error: File not found on GitHub";
+            }
+            
+            JSONObject json = new JSONObject();
+            json.put("message", message.isEmpty() ? "Delete " + path : message);
+            json.put("sha", sha);
+
+            RequestBody body = RequestBody.create(json.toString(), MediaType.parse("application/json"));
+            Request request = new Request.Builder()
+                .url(url)
+                .header("Authorization", "token " + token)
+                .delete(body)
+                .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful()) {
+                    return "Success: Deleted!";
+                } else {
+                    return "Error: " + response.code();
+                }
+            }
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
     private String getFileSha(String url) {
         try {
             Request request = new Request.Builder()
