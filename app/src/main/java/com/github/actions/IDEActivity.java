@@ -33,6 +33,9 @@ public class IDEActivity extends AppCompatActivity {
     private java.util.Set<File> selectedFiles = new java.util.HashSet<>();
     private android.os.Handler autoSaveHandler = new android.os.Handler();
     private Runnable autoSaveRunnable;
+    private java.util.Stack<String> undoStack = new java.util.Stack<>();
+    private java.util.Stack<String> redoStack = new java.util.Stack<>();
+    private boolean isUndoRedo = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -139,6 +142,13 @@ public class IDEActivity extends AppCompatActivity {
                 // Trigger auto-save after 2 seconds of inactivity
                 autoSaveHandler.removeCallbacks(autoSaveRunnable);
                 autoSaveHandler.postDelayed(autoSaveRunnable, 2000);
+                
+                // Track for undo/redo
+                if (!isUndoRedo && !text.equals(before)) {
+                    undoStack.push(before);
+                    if (undoStack.size() > 50) undoStack.remove(0);
+                    redoStack.clear();
+                }
                 
                 int selection = editor.getSelectionStart();
                 
@@ -331,16 +341,28 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void undo() {
-        if (editor.canUndo()) {
-            editor.getText().undo();
+        if (!undoStack.isEmpty()) {
+            String current = editor.getText().toString();
+            redoStack.push(current);
+            String previous = undoStack.pop();
+            isUndoRedo = true;
+            editor.setText(previous);
+            editor.setSelection(Math.min(previous.length(), editor.getText().length()));
+            isUndoRedo = false;
         } else {
             Toast.makeText(this, "Nothing to undo", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void redo() {
-        if (editor.canRedo()) {
-            editor.getText().redo();
+        if (!redoStack.isEmpty()) {
+            String current = editor.getText().toString();
+            undoStack.push(current);
+            String next = redoStack.pop();
+            isUndoRedo = true;
+            editor.setText(next);
+            editor.setSelection(Math.min(next.length(), editor.getText().length()));
+            isUndoRedo = false;
         } else {
             Toast.makeText(this, "Nothing to redo", Toast.LENGTH_SHORT).show();
         }
@@ -849,6 +871,9 @@ public class IDEActivity extends AppCompatActivity {
             
             currentFile = file;
             String content = new String(data);
+            
+            undoStack.clear();
+            redoStack.clear();
             
             editor.setText(content);
             applySyntaxHighlighting(file.getName(), content);
