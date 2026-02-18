@@ -242,7 +242,7 @@ public class IDEActivity extends AppCompatActivity {
             subContainer.setOrientation(LinearLayout.VERTICAL);
             subContainer.setVisibility(View.GONE);
             
-            rowLayout.setOnClickListener(v -> {
+            View.OnClickListener toggleFolder = v -> {
                 if (selectionMode) return;
                 if (arrow.getTag().equals("collapsed")) {
                     arrow.setText("▼ ");
@@ -256,7 +256,11 @@ public class IDEActivity extends AppCompatActivity {
                     arrow.setTag("collapsed");
                     subContainer.setVisibility(View.GONE);
                 }
-            });
+            };
+            
+            arrow.setOnClickListener(toggleFolder);
+            tv.setOnClickListener(toggleFolder);
+            rowLayout.setOnClickListener(toggleFolder);
             
             if (!selectionMode) {
                 TextView btnMenu = new TextView(this);
@@ -360,16 +364,14 @@ public class IDEActivity extends AppCompatActivity {
     private void moveSelectedFiles() {
         if (selectedFiles.isEmpty()) {
             Toast.makeText(this, "No files selected", Toast.LENGTH_SHORT).show();
-            showSelectionMenu();
             return;
         }
         
-        // Show folder picker
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Move to folder");
         
         java.util.List<File> folders = new java.util.ArrayList<>();
-        folders.add(new File(projectPath)); // Root
+        folders.add(new File(projectPath));
         collectFolders(new File(projectPath), folders);
         
         String[] folderNames = new String[folders.size()];
@@ -387,16 +389,19 @@ public class IDEActivity extends AppCompatActivity {
             int moved = 0;
             
             for (File file : selectedFiles) {
+                if (file.getParentFile().equals(targetFolder)) {
+                    continue;
+                }
                 File newFile = new File(targetFolder, file.getName());
                 if (file.renameTo(newFile)) {
                     moved++;
                 }
             }
             
-            Toast.makeText(this, "Moved " + moved + " files", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Moved " + moved + " items", Toast.LENGTH_SHORT).show();
             exitSelectionMode();
         });
-        builder.setNegativeButton("Cancel", (d, w) -> showSelectionMenu());
+        builder.setNegativeButton("Cancel", null);
         builder.show();
     }
 
@@ -415,23 +420,30 @@ public class IDEActivity extends AppCompatActivity {
     private void deleteSelectedFiles() {
         if (selectedFiles.isEmpty()) {
             Toast.makeText(this, "No files selected", Toast.LENGTH_SHORT).show();
-            showSelectionMenu();
             return;
         }
         
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Delete " + selectedFiles.size() + " items?");
+        builder.setMessage("This action cannot be undone.");
         builder.setPositiveButton("Delete", (d, w) -> {
             int deleted = 0;
             for (File file : selectedFiles) {
                 if (deleteRecursive(file)) {
                     deleted++;
+                    if (currentFile != null && currentFile.equals(file)) {
+                        currentFile = null;
+                        editor.setText("");
+                        if (getSupportActionBar() != null) {
+                            getSupportActionBar().setSubtitle("");
+                        }
+                    }
                 }
             }
             Toast.makeText(this, "Deleted " + deleted + " items", Toast.LENGTH_SHORT).show();
             exitSelectionMode();
         });
-        builder.setNegativeButton("Cancel", (d, w) -> showSelectionMenu());
+        builder.setNegativeButton("Cancel", null);
         builder.show();
     }
 
@@ -532,13 +544,19 @@ public class IDEActivity extends AppCompatActivity {
         builder.setTitle("Rename");
         EditText input = new EditText(this);
         input.setText(file.getName());
+        input.setSelection(file.getName().length());
         input.setPadding(50, 20, 50, 20);
         builder.setView(input);
         builder.setPositiveButton("Rename", (d, w) -> {
             String newName = input.getText().toString().trim();
-            if (newName.isEmpty()) return;
+            if (newName.isEmpty() || newName.equals(file.getName())) return;
             
             File newFile = new File(file.getParent(), newName);
+            if (newFile.exists()) {
+                Toast.makeText(this, "File already exists", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
             if (file.renameTo(newFile)) {
                 if (currentFile != null && currentFile.equals(file)) {
                     currentFile = newFile;
@@ -812,7 +830,7 @@ public class IDEActivity extends AppCompatActivity {
             FileOutputStream fos = new FileOutputStream(currentFile);
             fos.write(editor.getText().toString().getBytes());
             fos.close();
-            Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Saved ✓", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
