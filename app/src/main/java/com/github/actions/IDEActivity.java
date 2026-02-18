@@ -142,6 +142,9 @@ public class IDEActivity extends AppCompatActivity {
             lineNumberContainer.scrollTo(0, scrollY);
         });
         
+        editorScroll.addView(editor);
+        editorContainer.addView(editorScroll);
+        
         // Tab key support and keyboard shortcuts
         editor.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
@@ -205,11 +208,8 @@ public class IDEActivity extends AppCompatActivity {
                 // Update line numbers
                 updateLineNumbers(lineNumbers, text);
                 
-                // Sync scrolling
-                editorScroll.post(() -> {
-                    int scrollY = editorScroll.getScrollY();
-                    lineNumberScroll.scrollTo(0, scrollY);
-                });
+                // Update line numbers
+                updateLineNumbers();
                 
                 // Trigger auto-save after 2 seconds of inactivity
                 autoSaveHandler.removeCallbacks(autoSaveRunnable);
