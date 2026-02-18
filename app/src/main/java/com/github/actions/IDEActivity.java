@@ -31,6 +31,8 @@ public class IDEActivity extends AppCompatActivity {
     private ExecutorService executor = Executors.newSingleThreadExecutor();
     private boolean selectionMode = false;
     private java.util.Set<File> selectedFiles = new java.util.HashSet<>();
+    private android.os.Handler autoSaveHandler = new android.os.Handler();
+    private Runnable autoSaveRunnable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,17 +62,17 @@ public class IDEActivity extends AppCompatActivity {
         // Line numbers
         ScrollView lineNumberScroll = new ScrollView(this);
         LinearLayout.LayoutParams lineNumParams = new LinearLayout.LayoutParams(
-            (int)(40 * getResources().getDisplayMetrics().density),
+            (int)(35 * getResources().getDisplayMetrics().density),
             LinearLayout.LayoutParams.MATCH_PARENT);
         lineNumberScroll.setLayoutParams(lineNumParams);
         
         TextView lineNumbers = new TextView(this);
         lineNumbers.setTypeface(android.graphics.Typeface.MONOSPACE);
-        lineNumbers.setTextSize(14);
+        lineNumbers.setTextSize(12);
         lineNumbers.setGravity(Gravity.TOP | Gravity.END);
-        lineNumbers.setPadding(10, 20, 10, 20);
+        lineNumbers.setPadding(5, 20, 5, 20);
         lineNumbers.setBackgroundColor(0xFFF5F5F5);
-        lineNumbers.setTextColor(0xFF666666);
+        lineNumbers.setTextColor(0xFF999999);
         lineNumbers.setLayoutParams(new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -89,13 +91,22 @@ public class IDEActivity extends AppCompatActivity {
         editor.setLayoutParams(new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.MATCH_PARENT));
-        editor.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        editor.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS | InputType.TYPE_TEXT_FLAG_AUTO_CORRECT);
         editor.setTypeface(android.graphics.Typeface.MONOSPACE);
         editor.setTextSize(14);
         editor.setGravity(Gravity.TOP | Gravity.START);
-        editor.setPadding(20, 20, 20, 20);
+        editor.setPadding(15, 20, 15, 20);
         editor.setHorizontallyScrolling(true);
         editor.setBackgroundColor(0xFFFFFFFF);
+        editor.setTextColor(0xFF000000);
+        editor.setHighlightColor(0x6633B5E5);
+        
+        // Auto-save setup
+        autoSaveRunnable = () -> {
+            if (currentFile != null) {
+                autoSaveFile();
+            }
+        };
         
         // Auto-indent and auto-brackets
         editor.addTextChangedListener(new android.text.TextWatcher() {
@@ -124,6 +135,10 @@ public class IDEActivity extends AppCompatActivity {
                     int scrollY = editorScroll.getScrollY();
                     lineNumberScroll.scrollTo(0, scrollY);
                 });
+                
+                // Trigger auto-save after 2 seconds of inactivity
+                autoSaveHandler.removeCallbacks(autoSaveRunnable);
+                autoSaveHandler.postDelayed(autoSaveRunnable, 2000);
                 
                 int selection = editor.getSelectionStart();
                 
@@ -279,7 +294,10 @@ public class IDEActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         menu.add(0, 1, 0, "Save");
-        menu.add(0, 2, 0, "Commit & Push All");
+        menu.add(0, 2, 0, "Undo");
+        menu.add(0, 3, 0, "Redo");
+        menu.add(0, 4, 0, "Find");
+        menu.add(0, 5, 0, "Commit & Push All");
         return true;
     }
 
@@ -297,10 +315,60 @@ public class IDEActivity extends AppCompatActivity {
                 saveCurrentFile();
                 return true;
             case 2:
+                undo();
+                return true;
+            case 3:
+                redo();
+                return true;
+            case 4:
+                showFindDialog();
+                return true;
+            case 5:
                 commitAndPushAll();
                 return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void undo() {
+        if (editor.canUndo()) {
+            editor.getText().undo();
+        } else {
+            Toast.makeText(this, "Nothing to undo", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void redo() {
+        if (editor.canRedo()) {
+            editor.getText().redo();
+        } else {
+            Toast.makeText(this, "Nothing to redo", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showFindDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Find");
+        EditText input = new EditText(this);
+        input.setHint("Search text");
+        input.setPadding(50, 20, 50, 20);
+        builder.setView(input);
+        builder.setPositiveButton("Find", (d, w) -> {
+            String search = input.getText().toString();
+            if (!search.isEmpty()) {
+                String text = editor.getText().toString();
+                int index = text.indexOf(search);
+                if (index >= 0) {
+                    editor.setSelection(index, index + search.length());
+                    editor.requestFocus();
+                    Toast.makeText(this, "Found", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Not found", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
     }
 
     private void loadFiles() {
@@ -989,6 +1057,19 @@ public class IDEActivity extends AppCompatActivity {
         }
     }
 
+    private void autoSaveFile() {
+        if (currentFile == null) return;
+        
+        try {
+            FileOutputStream fos = new FileOutputStream(currentFile);
+            fos.write(editor.getText().toString().getBytes());
+            fos.close();
+            // Silent auto-save, no toast
+        } catch (Exception e) {
+            // Silent fail
+        }
+    }
+
     private void commitAndPushAll() {
         String username = prefs.getString("username", "");
         String token = prefs.getString("token", "");
@@ -1092,6 +1173,16 @@ public class IDEActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        autoSaveHandler.removeCallbacks(autoSaveRunnable);
         executor.shutdown();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Auto-save when leaving the activity
+        if (currentFile != null) {
+            autoSaveFile();
+        }
     }
 }
