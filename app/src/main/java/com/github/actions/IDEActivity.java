@@ -209,7 +209,7 @@ public class IDEActivity extends AppCompatActivity {
                 updateLineNumbers(lineNumbers, text);
                 
                 // Update line numbers
-                updateLineNumbers();
+                updateLineNumbers(lineNumbers, text);
                 
                 // Trigger auto-save after 2 seconds of inactivity
                 autoSaveHandler.removeCallbacks(autoSaveRunnable);
