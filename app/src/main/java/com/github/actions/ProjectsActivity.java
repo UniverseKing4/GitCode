@@ -111,8 +111,10 @@ public class ProjectsActivity extends AppCompatActivity {
             }
             
             if (dir.mkdirs()) {
-                saveProject(name, fullPath);
-                openProject(name, fullPath);
+                // Use the actual created folder name
+                String actualName = dir.getName();
+                saveProject(actualName, fullPath);
+                openProject(actualName, fullPath);
             } else {
                 Toast.makeText(this, "Failed to create project", Toast.LENGTH_SHORT).show();
             }
@@ -123,10 +125,7 @@ public class ProjectsActivity extends AppCompatActivity {
 
     private void saveProject(String name, String path) {
         String projects = prefs.getString("projects", "");
-        // Get actual folder name from path
-        File dir = new File(path);
-        String actualName = dir.getName();
-        projects += actualName + "|" + path + ";";
+        projects += name + "|" + path + ";";
         prefs.edit().putString("projects", projects).apply();
     }
 

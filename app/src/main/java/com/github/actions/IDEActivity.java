@@ -220,6 +220,13 @@ public class IDEActivity extends AppCompatActivity {
                 }
             });
             
+            TextView btnMenu = new TextView(this);
+            btnMenu.setText("⋮");
+            btnMenu.setTextSize(22);
+            btnMenu.setPadding(20, 0, 15, 0);
+            btnMenu.setOnClickListener(v -> showFolderMenu(file));
+            rowLayout.addView(btnMenu);
+            
             itemLayout.addView(rowLayout);
             itemLayout.addView(subContainer);
         } else {
@@ -231,17 +238,81 @@ public class IDEActivity extends AppCompatActivity {
             tv.setOnClickListener(v -> openFile(file));
             rowLayout.addView(tv);
             
+            TextView btnMenu = new TextView(this);
+            btnMenu.setText("⋮");
+            btnMenu.setTextSize(22);
+            btnMenu.setPadding(20, 0, 15, 0);
+            btnMenu.setOnClickListener(v -> showFileMenu(file));
+            rowLayout.addView(btnMenu);
+            
             itemLayout.addView(rowLayout);
         }
         
-        TextView btnMenu = new TextView(this);
-        btnMenu.setText("⋮");
-        btnMenu.setTextSize(20);
-        btnMenu.setPadding(10, 0, 10, 0);
-        btnMenu.setOnClickListener(v -> showFileMenu(file));
-        rowLayout.addView(btnMenu);
-        
         container.addView(itemLayout);
+    }
+
+    private void showFolderMenu(File folder) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(folder.getName());
+        
+        String[] options = new String[]{"New File Here", "New Folder Here", "Rename", "Delete"};
+        
+        builder.setItems(options, (d, which) -> {
+            switch (which) {
+                case 0: createNewFileInFolder(folder); break;
+                case 1: createNewFolderInFolder(folder); break;
+                case 2: renameFile(folder); break;
+                case 3: deleteFile(folder); break;
+            }
+        });
+        builder.show();
+    }
+
+    private void createNewFileInFolder(File folder) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("New File in " + folder.getName());
+        EditText input = new EditText(this);
+        input.setHint("filename.ext");
+        input.setPadding(50, 20, 50, 20);
+        builder.setView(input);
+        builder.setPositiveButton("Create", (d, w) -> {
+            String name = input.getText().toString().trim();
+            if (name.isEmpty()) return;
+            
+            File file = new File(folder, name);
+            try {
+                file.createNewFile();
+                loadFiles();
+                Toast.makeText(this, "File created", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private void createNewFolderInFolder(File parent) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("New Folder in " + parent.getName());
+        EditText input = new EditText(this);
+        input.setHint("folder name");
+        input.setPadding(50, 20, 50, 20);
+        builder.setView(input);
+        builder.setPositiveButton("Create", (d, w) -> {
+            String name = input.getText().toString().trim();
+            if (name.isEmpty()) return;
+            
+            File folder = new File(parent, name);
+            if (folder.mkdirs()) {
+                loadFiles();
+                Toast.makeText(this, "Folder created", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Failed to create folder", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
     }
 
     private void expandFolder(File folder, LinearLayout container) {
@@ -601,36 +672,46 @@ public class IDEActivity extends AppCompatActivity {
         executor.execute(() -> {
             GitHubAPI api = new GitHubAPI(username, token, repo);
             File dir = new File(projectPath);
-            File[] files = dir.listFiles();
             
-            if (files == null || files.length == 0) {
-                runOnUiThread(() -> Toast.makeText(this, "No files to push", Toast.LENGTH_SHORT).show());
-                return;
-            }
-            
-            int success = 0;
-            for (File file : files) {
-                if (file.isFile()) {
-                    try {
-                        FileInputStream fis = new FileInputStream(file);
-                        byte[] data = new byte[(int) file.length()];
-                        fis.read(data);
-                        fis.close();
-                        
-                        String content = new String(data);
-                        String result = api.commitAndPush(file.getName(), content, message);
-                        if (result.contains("Success")) {
-                            success++;
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
+            int success = pushDirectory(api, dir, "", message);
             
             int finalSuccess = success;
             runOnUiThread(() -> Toast.makeText(this, "Pushed " + finalSuccess + " files successfully", Toast.LENGTH_LONG).show());
         });
+    }
+
+    private int pushDirectory(GitHubAPI api, File dir, String relativePath, String message) {
+        int success = 0;
+        File[] files = dir.listFiles();
+        
+        if (files == null || files.length == 0) {
+            return 0;
+        }
+        
+        for (File file : files) {
+            if (file.isDirectory()) {
+                String newPath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
+                success += pushDirectory(api, file, newPath, message);
+            } else {
+                try {
+                    FileInputStream fis = new FileInputStream(file);
+                    byte[] data = new byte[(int) file.length()];
+                    fis.read(data);
+                    fis.close();
+                    
+                    String content = new String(data);
+                    String filePath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
+                    String result = api.commitAndPush(filePath, content, message);
+                    if (result.contains("Success")) {
+                        success++;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        
+        return success;
     }
 
     @Override
