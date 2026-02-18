@@ -80,7 +80,7 @@ public class IDEActivity extends AppCompatActivity {
             mainLayout.setBackgroundColor(0xFF1E1E1E);
         }
         
-        // Editor container
+        // Editor container with synchronized scrolling
         LinearLayout editorContainer = new LinearLayout(this);
         editorContainer.setOrientation(LinearLayout.HORIZONTAL);
         editorContainer.setLayoutParams(new LinearLayout.LayoutParams(
@@ -90,13 +90,13 @@ public class IDEActivity extends AppCompatActivity {
             editorContainer.setBackgroundColor(0xFF1E1E1E);
         }
         
-        // Line numbers
-        ScrollView lineNumberScroll = new ScrollView(this);
-        lineNumberScroll.setVerticalScrollBarEnabled(false);
-        LinearLayout.LayoutParams lineNumParams = new LinearLayout.LayoutParams(
+        // Line numbers in fixed width container
+        LinearLayout lineNumberContainer = new LinearLayout(this);
+        lineNumberContainer.setOrientation(LinearLayout.VERTICAL);
+        lineNumberContainer.setLayoutParams(new LinearLayout.LayoutParams(
             (int)(30 * getResources().getDisplayMetrics().density),
-            LinearLayout.LayoutParams.MATCH_PARENT);
-        lineNumberScroll.setLayoutParams(lineNumParams);
+            LinearLayout.LayoutParams.MATCH_PARENT));
+        lineNumberContainer.setBackgroundColor(isDark ? 0xFF2D2D2D : 0xFFF5F5F5);
         
         TextView lineNumbers = new TextView(this);
         lineNumbers.setTypeface(android.graphics.Typeface.MONOSPACE);
@@ -106,12 +106,11 @@ public class IDEActivity extends AppCompatActivity {
         lineNumbers.setBackgroundColor(isDark ? 0xFF2D2D2D : 0xFFF5F5F5);
         lineNumbers.setTextColor(isDark ? 0xFF666666 : 0xFF999999);
         lineNumbers.setLineSpacing(0, 1.0f);
-        lineNumbers.setMinHeight(0);
         lineNumbers.setLayoutParams(new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT));
-        lineNumberScroll.addView(lineNumbers);
-        editorContainer.addView(lineNumberScroll);
+        lineNumberContainer.addView(lineNumbers);
+        editorContainer.addView(lineNumberContainer);
         
         ScrollView editorScroll = new ScrollView(this);
         editorScroll.setVerticalScrollBarEnabled(false);
@@ -125,18 +124,23 @@ public class IDEActivity extends AppCompatActivity {
         editor = new EditText(this);
         editor.setLayoutParams(new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.MATCH_PARENT));
+            LinearLayout.LayoutParams.WRAP_CONTENT));
         editor.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS | InputType.TYPE_TEXT_FLAG_AUTO_CORRECT);
         editor.setTypeface(android.graphics.Typeface.MONOSPACE);
         editor.setTextSize(14);
         editor.setLineSpacing(0, 1.0f);
         editor.setGravity(Gravity.TOP | Gravity.START);
         editor.setPadding(10, 20, 15, 20);
-        editor.setHorizontallyScrolling(false); // Enable word wrap
+        editor.setHorizontallyScrolling(false);
         editor.setBackgroundColor(isDark ? 0xFF1E1E1E : 0xFFFFFFFF);
         editor.setTextColor(isDark ? 0xFFE0E0E0 : 0xFF000000);
         editor.setHighlightColor(0x6633B5E5);
         editor.setVerticalScrollBarEnabled(false);
+        
+        // Sync line numbers scroll with editor
+        editorScroll.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+            lineNumberContainer.scrollTo(0, scrollY);
+        });
         
         // Tab key support and keyboard shortcuts
         editor.setOnKeyListener((v, keyCode, event) -> {
