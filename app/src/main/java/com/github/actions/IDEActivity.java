@@ -59,6 +59,11 @@ public class IDEActivity extends AppCompatActivity {
         
         // Line numbers
         ScrollView lineNumberScroll = new ScrollView(this);
+        LinearLayout.LayoutParams lineNumParams = new LinearLayout.LayoutParams(
+            (int)(50 * getResources().getDisplayMetrics().density),
+            LinearLayout.LayoutParams.MATCH_PARENT);
+        lineNumberScroll.setLayoutParams(lineNumParams);
+        
         TextView lineNumbers = new TextView(this);
         lineNumbers.setTypeface(android.graphics.Typeface.MONOSPACE);
         lineNumbers.setTextSize(14);
@@ -66,11 +71,24 @@ public class IDEActivity extends AppCompatActivity {
         lineNumbers.setPadding(10, 20, 10, 20);
         lineNumbers.setBackgroundColor(0xFFF5F5F5);
         lineNumbers.setTextColor(0xFF666666);
+        lineNumbers.setLayoutParams(new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT));
         lineNumberScroll.addView(lineNumbers);
         mainLayout.addView(lineNumberScroll);
         
         ScrollView editorScroll = new ScrollView(this);
+        LinearLayout.LayoutParams editorScrollParams = new LinearLayout.LayoutParams(
+            0,
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            1);
+        editorScroll.setLayoutParams(editorScrollParams);
+        editorScroll.setFillViewport(true);
+        
         editor = new EditText(this);
+        editor.setLayoutParams(new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.MATCH_PARENT));
         editor.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         editor.setTypeface(android.graphics.Typeface.MONOSPACE);
         editor.setTextSize(14);
@@ -104,7 +122,7 @@ public class IDEActivity extends AppCompatActivity {
                 });
                 
                 // Auto-indent on new line
-                if (text.length() > before.length() && text.charAt(cursorPos) == '\n') {
+                if (text.length() > before.length() && cursorPos < text.length() && text.charAt(cursorPos) == '\n') {
                     String[] lines = before.substring(0, cursorPos).split("\n");
                     if (lines.length > 0) {
                         String lastLine = lines[lines.length - 1];
