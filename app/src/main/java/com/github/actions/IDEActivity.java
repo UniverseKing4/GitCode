@@ -219,12 +219,42 @@ public class IDEActivity extends AppCompatActivity {
                         case '{': closing = '}'; break;
                         case '"': closing = '"'; break;
                         case '\'': closing = '\''; break;
+                        case '`': closing = '`'; break;
+                        case '<': 
+                            // Auto-close < for HTML/XML
+                            if (currentFile != null && (currentFile.getName().endsWith(".html") || 
+                                currentFile.getName().endsWith(".xml") || 
+                                currentFile.getName().endsWith(".jsx") || 
+                                currentFile.getName().endsWith(".tsx"))) {
+                                closing = '>';
+                            }
+                            break;
                     }
                     
                     if (closing != 0) {
                         if (selection >= text.length() || !Character.isLetterOrDigit(text.charAt(selection))) {
                             s.insert(selection, String.valueOf(closing));
                             editor.setSelection(selection);
+                        }
+                    }
+                    
+                    // Auto-close tags for HTML/XML
+                    if (typed == '>' && currentFile != null && 
+                        (currentFile.getName().endsWith(".html") || 
+                         currentFile.getName().endsWith(".xml") ||
+                         currentFile.getName().endsWith(".jsx") ||
+                         currentFile.getName().endsWith(".tsx"))) {
+                        
+                        // Find opening tag
+                        int tagStart = text.lastIndexOf('<', selection - 2);
+                        if (tagStart >= 0 && tagStart < selection - 1) {
+                            String tag = text.substring(tagStart + 1, selection - 1).trim().split(" ")[0];
+                            if (!tag.isEmpty() && !tag.startsWith("/") && !tag.endsWith("/") &&
+                                !tag.matches("(br|hr|img|input|meta|link|area|base|col|embed|param|source|track|wbr)")) {
+                                String closeTag = "</" + tag + ">";
+                                s.insert(selection, closeTag);
+                                editor.setSelection(selection);
+                            }
                         }
                     }
                 }
@@ -309,7 +339,9 @@ public class IDEActivity extends AppCompatActivity {
         menu.add(0, 2, 0, "Undo");
         menu.add(0, 3, 0, "Redo");
         menu.add(0, 4, 0, "Find");
-        menu.add(0, 5, 0, "Commit & Push All");
+        menu.add(0, 5, 0, "Replace");
+        menu.add(0, 6, 0, "Go to Line");
+        menu.add(0, 7, 0, "Commit & Push All");
         return true;
     }
 
@@ -336,6 +368,12 @@ public class IDEActivity extends AppCompatActivity {
                 showFindDialog();
                 return true;
             case 5:
+                showReplaceDialog();
+                return true;
+            case 6:
+                showGoToLineDialog();
+                return true;
+            case 7:
                 commitAndPushAll();
                 return true;
         }
@@ -381,14 +419,83 @@ public class IDEActivity extends AppCompatActivity {
             String search = input.getText().toString();
             if (!search.isEmpty()) {
                 String text = editor.getText().toString();
-                int index = text.indexOf(search);
+                int start = editor.getSelectionStart();
+                int index = text.indexOf(search, start);
+                if (index < 0) {
+                    index = text.indexOf(search);
+                }
                 if (index >= 0) {
                     editor.setSelection(index, index + search.length());
                     editor.requestFocus();
-                    Toast.makeText(this, "Found", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Found at position " + index, Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(this, "Not found", Toast.LENGTH_SHORT).show();
                 }
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private void showReplaceDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Find & Replace");
+        
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 20, 50, 20);
+        
+        EditText findInput = new EditText(this);
+        findInput.setHint("Find");
+        layout.addView(findInput);
+        
+        EditText replaceInput = new EditText(this);
+        replaceInput.setHint("Replace with");
+        layout.addView(replaceInput);
+        
+        builder.setView(layout);
+        builder.setPositiveButton("Replace All", (d, w) -> {
+            String find = findInput.getText().toString();
+            String replace = replaceInput.getText().toString();
+            if (!find.isEmpty()) {
+                String text = editor.getText().toString();
+                String newText = text.replace(find, replace);
+                int count = (text.length() - newText.length()) / Math.max(1, find.length() - replace.length());
+                editor.setText(newText);
+                Toast.makeText(this, "Replaced " + count + " occurrences", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private void showGoToLineDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Go to Line");
+        EditText input = new EditText(this);
+        input.setHint("Line number");
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setPadding(50, 20, 50, 20);
+        builder.setView(input);
+        builder.setPositiveButton("Go", (d, w) -> {
+            try {
+                int line = Integer.parseInt(input.getText().toString());
+                String text = editor.getText().toString();
+                String[] lines = text.split("\n", -1);
+                
+                if (line > 0 && line <= lines.length) {
+                    int pos = 0;
+                    for (int i = 0; i < line - 1; i++) {
+                        pos += lines[i].length() + 1;
+                    }
+                    editor.setSelection(pos);
+                    editor.requestFocus();
+                    Toast.makeText(this, "Line " + line, Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Invalid line number", Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
+                Toast.makeText(this, "Invalid input", Toast.LENGTH_SHORT).show();
             }
         });
         builder.setNegativeButton("Cancel", null);
