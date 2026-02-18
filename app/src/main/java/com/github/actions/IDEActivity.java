@@ -38,6 +38,7 @@ public class IDEActivity extends AppCompatActivity {
     private boolean isUndoRedo = false;
     private long lastEditTime = 0;
     private static final long UNDO_DELAY = 1000; // 1 second
+    private boolean wordWrapEnabled = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -452,10 +453,10 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void toggleWordWrap(MenuItem item) {
-        boolean isWrapping = !editor.getHorizontallyScrolling();
-        editor.setHorizontallyScrolling(isWrapping);
-        item.setTitle(isWrapping ? "Word Wrap: OFF" : "Word Wrap: ON");
-        Toast.makeText(this, isWrapping ? "Word wrap disabled" : "Word wrap enabled", Toast.LENGTH_SHORT).show();
+        wordWrapEnabled = !wordWrapEnabled;
+        editor.setHorizontallyScrolling(!wordWrapEnabled);
+        item.setTitle(wordWrapEnabled ? "Word Wrap: ON" : "Word Wrap: OFF");
+        Toast.makeText(this, wordWrapEnabled ? "Word wrap enabled" : "Word wrap disabled", Toast.LENGTH_SHORT).show();
     }
 
     private void duplicateLine() {
