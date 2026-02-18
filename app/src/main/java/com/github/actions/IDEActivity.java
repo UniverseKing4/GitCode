@@ -52,10 +52,22 @@ public class IDEActivity extends AppCompatActivity {
         
         // Main editor area
         LinearLayout mainLayout = new LinearLayout(this);
-        mainLayout.setOrientation(LinearLayout.VERTICAL);
+        mainLayout.setOrientation(LinearLayout.HORIZONTAL);
         mainLayout.setLayoutParams(new DrawerLayout.LayoutParams(
             DrawerLayout.LayoutParams.MATCH_PARENT,
             DrawerLayout.LayoutParams.MATCH_PARENT));
+        
+        // Line numbers
+        ScrollView lineNumberScroll = new ScrollView(this);
+        TextView lineNumbers = new TextView(this);
+        lineNumbers.setTypeface(android.graphics.Typeface.MONOSPACE);
+        lineNumbers.setTextSize(14);
+        lineNumbers.setGravity(Gravity.TOP | Gravity.END);
+        lineNumbers.setPadding(10, 20, 10, 20);
+        lineNumbers.setBackgroundColor(0xFFF5F5F5);
+        lineNumbers.setTextColor(0xFF666666);
+        lineNumberScroll.addView(lineNumbers);
+        mainLayout.addView(lineNumberScroll);
         
         ScrollView editorScroll = new ScrollView(this);
         editor = new EditText(this);
@@ -66,6 +78,80 @@ public class IDEActivity extends AppCompatActivity {
         editor.setPadding(20, 20, 20, 20);
         editor.setHorizontallyScrolling(true);
         editor.setBackgroundColor(0xFFFFFFFF);
+        
+        // Auto-indent and auto-brackets
+        editor.addTextChangedListener(new android.text.TextWatcher() {
+            private String before = "";
+            private int cursorPos = 0;
+            
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                before = s.toString();
+                cursorPos = start;
+            }
+            
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            
+            public void afterTextChanged(android.text.Editable s) {
+                String text = s.toString();
+                
+                // Update line numbers
+                updateLineNumbers(lineNumbers, text);
+                
+                // Sync scrolling
+                editorScroll.post(() -> {
+                    int scrollY = editorScroll.getScrollY();
+                    lineNumberScroll.scrollTo(0, scrollY);
+                });
+                
+                // Auto-indent on new line
+                if (text.length() > before.length() && text.charAt(cursorPos) == '\n') {
+                    String[] lines = before.substring(0, cursorPos).split("\n");
+                    if (lines.length > 0) {
+                        String lastLine = lines[lines.length - 1];
+                        int indent = 0;
+                        for (char c : lastLine.toCharArray()) {
+                            if (c == ' ' || c == '\t') indent++;
+                            else break;
+                        }
+                        
+                        // Extra indent after opening brace
+                        if (lastLine.trim().endsWith("{") || lastLine.trim().endsWith(":")) {
+                            indent += 4;
+                        }
+                        
+                        if (indent > 0) {
+                            String indentStr = new String(new char[indent]).replace('\0', ' ');
+                            int pos = cursorPos + 1;
+                            s.insert(pos, indentStr);
+                            editor.setSelection(pos + indent);
+                        }
+                    }
+                }
+                
+                // Auto-close brackets
+                if (text.length() > before.length() && cursorPos < text.length()) {
+                    char typed = text.charAt(cursorPos);
+                    char closing = 0;
+                    
+                    switch (typed) {
+                        case '(': closing = ')'; break;
+                        case '[': closing = ']'; break;
+                        case '{': closing = '}'; break;
+                        case '"': closing = '"'; break;
+                        case '\'': closing = '\''; break;
+                    }
+                    
+                    if (closing != 0) {
+                        int pos = cursorPos + 1;
+                        if (pos >= text.length() || !Character.isLetterOrDigit(text.charAt(pos))) {
+                            s.insert(pos, String.valueOf(closing));
+                            editor.setSelection(pos);
+                        }
+                    }
+                }
+            }
+        });
+        
         editorScroll.addView(editor);
         mainLayout.addView(editorScroll);
         
@@ -642,6 +728,7 @@ public class IDEActivity extends AppCompatActivity {
             currentFile = file;
             String content = new String(data);
             
+            editor.setText(content);
             applySyntaxHighlighting(file.getName(), content);
             
             if (getSupportActionBar() != null) {
@@ -651,6 +738,15 @@ public class IDEActivity extends AppCompatActivity {
         } catch (Exception e) {
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void updateLineNumbers(TextView lineNumbers, String text) {
+        int lines = text.isEmpty() ? 1 : text.split("\n", -1).length;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 1; i <= lines; i++) {
+            sb.append(i).append("\n");
+        }
+        lineNumbers.setText(sb.toString());
     }
 
     private void applySyntaxHighlighting(String fileName, String content) {
@@ -805,13 +901,16 @@ public class IDEActivity extends AppCompatActivity {
             
             File file = new File(projectPath, name);
             try {
-                file.createNewFile();
-                currentFile = file;
-                editor.setText("");
-                if (getSupportActionBar() != null) {
-                    getSupportActionBar().setSubtitle(name);
+                if (file.createNewFile()) {
+                    currentFile = file;
+                    editor.setText("");
+                    if (getSupportActionBar() != null) {
+                        getSupportActionBar().setSubtitle(name);
+                    }
+                    loadFiles();
+                } else {
+                    Toast.makeText(this, "File already exists", Toast.LENGTH_SHORT).show();
                 }
-                loadFiles();
             } catch (Exception e) {
                 Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
