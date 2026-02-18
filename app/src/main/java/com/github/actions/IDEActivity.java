@@ -1401,11 +1401,12 @@ public class IDEActivity extends AppCompatActivity {
             java.util.Set<String> previousFiles = pushPrefs.getStringSet("pushedFiles", new java.util.HashSet<>());
             int deleted = 0;
             for (String oldFile : previousFiles) {
-                if (!currentFiles.contains(oldFile) && !oldFile.endsWith("/.gitkeep")) {
+                if (!currentFiles.contains(oldFile)) {
                     String result = api.deleteFile(oldFile, message);
                     if (result.contains("Success")) {
                         deleted++;
                         results.add(oldFile + ": Deleted");
+                        pushPrefs.edit().remove(oldFile).apply();
                     }
                 }
             }
