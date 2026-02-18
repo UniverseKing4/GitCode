@@ -1383,26 +1383,36 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void pushAllToGitHub(String username, String token, String repo, String message) {
-        Toast.makeText(this, "Pushing all files to GitHub...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Checking for changes...", Toast.LENGTH_SHORT).show();
         executor.execute(() -> {
             GitHubAPI api = new GitHubAPI(username, token, repo);
             File dir = new File(projectPath);
             
+            // Get last push timestamps
+            SharedPreferences pushPrefs = getSharedPreferences("GitCodePush_" + projectName, MODE_PRIVATE);
+            
             java.util.List<String> results = new java.util.ArrayList<>();
-            int success = pushDirectory(api, dir, "", message, results);
+            int success = pushModifiedFiles(api, dir, "", message, results, pushPrefs);
+            
+            // Update timestamps
+            SharedPreferences.Editor editor = pushPrefs.edit();
+            long currentTime = System.currentTimeMillis();
+            editor.putLong("lastPushTime", currentTime);
+            editor.apply();
             
             int finalSuccess = success;
             runOnUiThread(() -> {
-                Toast.makeText(this, "Pushed " + finalSuccess + " items successfully", Toast.LENGTH_LONG).show();
-                if (!results.isEmpty()) {
-                    String summary = String.join("\n", results.subList(0, Math.min(5, results.size())));
-                    android.util.Log.d("GitCode", "Push results:\n" + summary);
+                if (finalSuccess > 0) {
+                    Toast.makeText(this, "Pushed " + finalSuccess + " modified files", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "No changes to push", Toast.LENGTH_SHORT).show();
                 }
             });
         });
     }
 
-    private int pushDirectory(GitHubAPI api, File dir, String relativePath, String message, java.util.List<String> results) {
+    private int pushModifiedFiles(GitHubAPI api, File dir, String relativePath, String message, 
+                                   java.util.List<String> results, SharedPreferences pushPrefs) {
         int success = 0;
         File[] files = dir.listFiles();
         
@@ -1410,39 +1420,53 @@ public class IDEActivity extends AppCompatActivity {
             return 0;
         }
         
+        long lastPushTime = pushPrefs.getLong("lastPushTime", 0);
+        
         for (File file : files) {
             if (file.isDirectory()) {
                 String newPath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
                 
-                // Create .gitkeep file to preserve empty folders
+                // Check if folder is empty
                 File[] subFiles = file.listFiles();
                 if (subFiles == null || subFiles.length == 0) {
+                    // Push .gitkeep for empty folders
                     String gitkeepPath = newPath + "/.gitkeep";
-                    String result = api.commitAndPush(gitkeepPath, "", message);
-                    results.add(gitkeepPath + ": " + result);
-                    if (result.contains("Success")) {
-                        success++;
+                    long gitkeepTime = pushPrefs.getLong(gitkeepPath, 0);
+                    if (gitkeepTime == 0) {
+                        String result = api.commitAndPush(gitkeepPath, "", message);
+                        results.add(gitkeepPath + ": " + result);
+                        if (result.contains("Success")) {
+                            pushPrefs.edit().putLong(gitkeepPath, System.currentTimeMillis()).apply();
+                            success++;
+                        }
                     }
                 } else {
-                    success += pushDirectory(api, file, newPath, message, results);
+                    success += pushModifiedFiles(api, file, newPath, message, results, pushPrefs);
                 }
             } else {
-                try {
-                    FileInputStream fis = new FileInputStream(file);
-                    byte[] data = new byte[(int) file.length()];
-                    fis.read(data);
-                    fis.close();
-                    
-                    String content = new String(data);
-                    String filePath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
-                    String result = api.commitAndPush(filePath, content, message);
-                    results.add(filePath + ": " + result);
-                    if (result.contains("Success")) {
-                        success++;
+                // Check if file was modified since last push
+                long fileModified = file.lastModified();
+                String filePath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
+                long lastPushed = pushPrefs.getLong(filePath, 0);
+                
+                if (fileModified > lastPushed) {
+                    try {
+                        FileInputStream fis = new FileInputStream(file);
+                        byte[] data = new byte[(int) file.length()];
+                        fis.read(data);
+                        fis.close();
+                        
+                        String content = new String(data);
+                        String result = api.commitAndPush(filePath, content, message);
+                        results.add(filePath + ": " + result);
+                        if (result.contains("Success")) {
+                            pushPrefs.edit().putLong(filePath, fileModified).apply();
+                            success++;
+                        }
+                    } catch (Exception e) {
+                        results.add(file.getName() + ": Error - " + e.getMessage());
+                        e.printStackTrace();
                     }
-                } catch (Exception e) {
-                    results.add(file.getName() + ": Error - " + e.getMessage());
-                    e.printStackTrace();
                 }
             }
         }
