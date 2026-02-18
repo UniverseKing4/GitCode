@@ -80,6 +80,9 @@ public class ProjectsActivity extends AppCompatActivity {
         mainLayout.addView(projectsList);
         
         ScrollView scrollView = new ScrollView(this);
+        if (isDark) {
+            scrollView.setBackgroundColor(0xFF1E1E1E);
+        }
         scrollView.addView(mainLayout);
         setContentView(scrollView);
         

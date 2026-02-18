@@ -400,6 +400,9 @@ public class IDEActivity extends AppCompatActivity {
         setContentView(drawerLayout);
         
         if (getSupportActionBar() != null) {
+            if (isDark) {
+                getSupportActionBar().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF2D2D2D));
+            }
             getSupportActionBar().setTitle(projectName);
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setHomeAsUpIndicator(android.R.drawable.ic_menu_sort_by_size);
@@ -649,12 +652,18 @@ public class IDEActivity extends AppCompatActivity {
         container.removeAllViews();
         if (!dir.exists()) dir.mkdirs();
         
+        SharedPreferences themePrefs = getSharedPreferences("GitCodeTheme", MODE_PRIVATE);
+        boolean isDark = themePrefs.getBoolean("darkMode", false);
+        
         File[] files = dir.listFiles();
         if (files == null || files.length == 0) {
             if (depth == 0) {
                 TextView empty = new TextView(this);
                 empty.setText("No files yet");
                 empty.setPadding(20, 20, 20, 20);
+                if (isDark) {
+                    empty.setTextColor(0xFFAAAAAA);
+                }
                 container.addView(empty);
             }
             return;
@@ -673,6 +682,9 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void createFileItem(File file, LinearLayout container, int depth) {
+        SharedPreferences themePrefs = getSharedPreferences("GitCodeTheme", MODE_PRIVATE);
+        boolean isDark = themePrefs.getBoolean("darkMode", false);
+        
         LinearLayout itemLayout = new LinearLayout(this);
         itemLayout.setOrientation(LinearLayout.VERTICAL);
         
@@ -699,6 +711,9 @@ public class IDEActivity extends AppCompatActivity {
             arrow.setTextSize(12);
             arrow.setPadding(0, 10, 5, 0);
             arrow.setTag("collapsed");
+            if (isDark) {
+                arrow.setTextColor(0xFFE0E0E0);
+            }
             rowLayout.addView(arrow);
             
             TextView tv = new TextView(this);
@@ -706,6 +721,9 @@ public class IDEActivity extends AppCompatActivity {
             tv.setPadding(5, 10, 15, 10);
             tv.setTextSize(16);
             tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            if (isDark) {
+                tv.setTextColor(0xFFE0E0E0);
+            }
             
             tv.setOnLongClickListener(v -> {
                 if (!selectionMode) {
@@ -757,6 +775,9 @@ public class IDEActivity extends AppCompatActivity {
             tv.setPadding(15, 10, 15, 10);
             tv.setTextSize(16);
             tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            if (isDark) {
+                tv.setTextColor(0xFFE0E0E0);
+            }
             
             tv.setOnClickListener(v -> {
                 if (!selectionMode) {
