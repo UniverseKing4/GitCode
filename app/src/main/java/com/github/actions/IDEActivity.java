@@ -65,17 +65,18 @@ public class IDEActivity extends AppCompatActivity {
         // Line numbers
         ScrollView lineNumberScroll = new ScrollView(this);
         LinearLayout.LayoutParams lineNumParams = new LinearLayout.LayoutParams(
-            (int)(35 * getResources().getDisplayMetrics().density),
+            (int)(30 * getResources().getDisplayMetrics().density),
             LinearLayout.LayoutParams.MATCH_PARENT);
         lineNumberScroll.setLayoutParams(lineNumParams);
         
         TextView lineNumbers = new TextView(this);
         lineNumbers.setTypeface(android.graphics.Typeface.MONOSPACE);
-        lineNumbers.setTextSize(12);
+        lineNumbers.setTextSize(14);
         lineNumbers.setGravity(Gravity.TOP | Gravity.END);
-        lineNumbers.setPadding(5, 20, 5, 20);
+        lineNumbers.setPadding(5, 20, 8, 20);
         lineNumbers.setBackgroundColor(0xFFF5F5F5);
         lineNumbers.setTextColor(0xFF999999);
+        lineNumbers.setLineSpacing(0, 1.0f);
         lineNumbers.setLayoutParams(new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -97,8 +98,9 @@ public class IDEActivity extends AppCompatActivity {
         editor.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS | InputType.TYPE_TEXT_FLAG_AUTO_CORRECT);
         editor.setTypeface(android.graphics.Typeface.MONOSPACE);
         editor.setTextSize(14);
+        editor.setLineSpacing(0, 1.0f);
         editor.setGravity(Gravity.TOP | Gravity.START);
-        editor.setPadding(15, 20, 15, 20);
+        editor.setPadding(10, 20, 15, 20);
         editor.setHorizontallyScrolling(true);
         editor.setBackgroundColor(0xFFFFFFFF);
         editor.setTextColor(0xFF000000);
