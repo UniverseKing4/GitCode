@@ -80,7 +80,7 @@ public class IDEActivity extends AppCompatActivity {
             mainLayout.setBackgroundColor(0xFF1E1E1E);
         }
         
-        // Editor container with synchronized scrolling
+        // Editor container
         LinearLayout editorContainer = new LinearLayout(this);
         editorContainer.setOrientation(LinearLayout.HORIZONTAL);
         editorContainer.setLayoutParams(new LinearLayout.LayoutParams(
@@ -90,13 +90,13 @@ public class IDEActivity extends AppCompatActivity {
             editorContainer.setBackgroundColor(0xFF1E1E1E);
         }
         
-        // Line numbers in fixed width container
-        LinearLayout lineNumberContainer = new LinearLayout(this);
-        lineNumberContainer.setOrientation(LinearLayout.VERTICAL);
-        lineNumberContainer.setLayoutParams(new LinearLayout.LayoutParams(
+        // Line numbers
+        ScrollView lineNumberScroll = new ScrollView(this);
+        lineNumberScroll.setVerticalScrollBarEnabled(false);
+        LinearLayout.LayoutParams lineNumParams = new LinearLayout.LayoutParams(
             (int)(30 * getResources().getDisplayMetrics().density),
-            LinearLayout.LayoutParams.MATCH_PARENT));
-        lineNumberContainer.setBackgroundColor(isDark ? 0xFF2D2D2D : 0xFFF5F5F5);
+            LinearLayout.LayoutParams.MATCH_PARENT);
+        lineNumberScroll.setLayoutParams(lineNumParams);
         
         TextView lineNumbers = new TextView(this);
         lineNumbers.setTypeface(android.graphics.Typeface.MONOSPACE);
@@ -109,8 +109,8 @@ public class IDEActivity extends AppCompatActivity {
         lineNumbers.setLayoutParams(new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT));
-        lineNumberContainer.addView(lineNumbers);
-        editorContainer.addView(lineNumberContainer);
+        lineNumberScroll.addView(lineNumbers);
+        editorContainer.addView(lineNumberScroll);
         
         ScrollView editorScroll = new ScrollView(this);
         editorScroll.setVerticalScrollBarEnabled(false);
@@ -136,13 +136,6 @@ public class IDEActivity extends AppCompatActivity {
         editor.setTextColor(isDark ? 0xFFE0E0E0 : 0xFF000000);
         editor.setHighlightColor(0x6633B5E5);
         editor.setVerticalScrollBarEnabled(false);
-        
-        // Sync line numbers scroll with editor
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            editorScroll.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
-                lineNumberContainer.scrollTo(0, scrollY);
-            });
-        }
         
         editorScroll.addView(editor);
         editorContainer.addView(editorScroll);
@@ -209,6 +202,12 @@ public class IDEActivity extends AppCompatActivity {
                 
                 // Update line numbers
                 updateLineNumbers(lineNumbers, text);
+                
+                // Sync scroll
+                editorScroll.post(() -> {
+                    int scrollY = editorScroll.getScrollY();
+                    lineNumberScroll.scrollTo(0, scrollY);
+                });
                 
                 // Trigger auto-save after 2 seconds of inactivity
                 autoSaveHandler.removeCallbacks(autoSaveRunnable);
