@@ -166,6 +166,7 @@ public class ProjectsActivity extends AppCompatActivity {
             
             Button btn = new Button(this);
             btn.setText("📁 " + actualName);
+            btn.setTransformationMethod(null); // Prevent auto-capitalization
             btn.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
             btn.setOnClickListener(v -> openProject(actualName, path));
             projectItem.addView(btn);

@@ -29,6 +29,8 @@ public class IDEActivity extends AppCompatActivity {
     private File currentFile;
     private SharedPreferences prefs;
     private ExecutorService executor = Executors.newSingleThreadExecutor();
+    private boolean selectionMode = false;
+    private java.util.Set<File> selectedFiles = new java.util.HashSet<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,6 +99,12 @@ public class IDEActivity extends AppCompatActivity {
         btnNewFolder.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         btnNewFolder.setOnClickListener(v -> createNewFolder());
         btnContainer.addView(btnNewFolder);
+        
+        android.widget.Button btnSelect = new android.widget.Button(this);
+        btnSelect.setText("Select");
+        btnSelect.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        btnSelect.setOnClickListener(v -> toggleSelectionMode());
+        btnContainer.addView(btnSelect);
         
         drawer.addView(btnContainer);
         
@@ -186,6 +194,19 @@ public class IDEActivity extends AppCompatActivity {
         rowLayout.setOrientation(LinearLayout.HORIZONTAL);
         rowLayout.setPadding(depth * 30 + 5, 5, 5, 5);
         
+        if (selectionMode) {
+            android.widget.CheckBox cb = new android.widget.CheckBox(this);
+            cb.setChecked(selectedFiles.contains(file));
+            cb.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (isChecked) {
+                    selectedFiles.add(file);
+                } else {
+                    selectedFiles.remove(file);
+                }
+            });
+            rowLayout.addView(cb);
+        }
+        
         if (file.isDirectory()) {
             TextView arrow = new TextView(this);
             arrow.setText("▶ ");
@@ -206,6 +227,7 @@ public class IDEActivity extends AppCompatActivity {
             subContainer.setVisibility(View.GONE);
             
             rowLayout.setOnClickListener(v -> {
+                if (selectionMode) return;
                 if (arrow.getTag().equals("collapsed")) {
                     arrow.setText("▼ ");
                     arrow.setTag("expanded");
@@ -220,12 +242,14 @@ public class IDEActivity extends AppCompatActivity {
                 }
             });
             
-            TextView btnMenu = new TextView(this);
-            btnMenu.setText("⋮");
-            btnMenu.setTextSize(22);
-            btnMenu.setPadding(20, 0, 15, 0);
-            btnMenu.setOnClickListener(v -> showFolderMenu(file));
-            rowLayout.addView(btnMenu);
+            if (!selectionMode) {
+                TextView btnMenu = new TextView(this);
+                btnMenu.setText("⋮");
+                btnMenu.setTextSize(22);
+                btnMenu.setPadding(20, 0, 15, 0);
+                btnMenu.setOnClickListener(v -> showFolderMenu(file));
+                rowLayout.addView(btnMenu);
+            }
             
             itemLayout.addView(rowLayout);
             itemLayout.addView(subContainer);
@@ -235,15 +259,19 @@ public class IDEActivity extends AppCompatActivity {
             tv.setPadding(15, 10, 15, 10);
             tv.setTextSize(16);
             tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-            tv.setOnClickListener(v -> openFile(file));
+            if (!selectionMode) {
+                tv.setOnClickListener(v -> openFile(file));
+            }
             rowLayout.addView(tv);
             
-            TextView btnMenu = new TextView(this);
-            btnMenu.setText("⋮");
-            btnMenu.setTextSize(22);
-            btnMenu.setPadding(20, 0, 15, 0);
-            btnMenu.setOnClickListener(v -> showFileMenu(file));
-            rowLayout.addView(btnMenu);
+            if (!selectionMode) {
+                TextView btnMenu = new TextView(this);
+                btnMenu.setText("⋮");
+                btnMenu.setTextSize(22);
+                btnMenu.setPadding(20, 0, 15, 0);
+                btnMenu.setOnClickListener(v -> showFileMenu(file));
+                rowLayout.addView(btnMenu);
+            }
             
             itemLayout.addView(rowLayout);
         }
@@ -251,18 +279,131 @@ public class IDEActivity extends AppCompatActivity {
         container.addView(itemLayout);
     }
 
+    private void toggleSelectionMode() {
+        selectionMode = !selectionMode;
+        selectedFiles.clear();
+        
+        if (selectionMode) {
+            showSelectionActions();
+        }
+        
+        loadFiles();
+    }
+
+    private void showSelectionActions() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Selected: " + selectedFiles.size());
+        
+        String[] options = new String[]{"Move", "Delete", "Cancel Selection"};
+        
+        builder.setItems(options, (d, which) -> {
+            switch (which) {
+                case 0: moveSelectedFiles(); break;
+                case 1: deleteSelectedFiles(); break;
+                case 2: 
+                    selectionMode = false;
+                    selectedFiles.clear();
+                    loadFiles();
+                    break;
+            }
+        });
+        builder.setOnCancelListener(d -> showSelectionActions());
+        builder.show();
+    }
+
+    private void moveSelectedFiles() {
+        if (selectedFiles.isEmpty()) {
+            Toast.makeText(this, "No files selected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Show folder picker
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Move to folder");
+        
+        java.util.List<File> folders = new java.util.ArrayList<>();
+        folders.add(new File(projectPath)); // Root
+        collectFolders(new File(projectPath), folders);
+        
+        String[] folderNames = new String[folders.size()];
+        for (int i = 0; i < folders.size(); i++) {
+            File f = folders.get(i);
+            if (f.getPath().equals(projectPath)) {
+                folderNames[i] = "/ (Root)";
+            } else {
+                folderNames[i] = f.getPath().replace(projectPath + "/", "");
+            }
+        }
+        
+        builder.setItems(folderNames, (d, which) -> {
+            File targetFolder = folders.get(which);
+            int moved = 0;
+            
+            for (File file : selectedFiles) {
+                File newFile = new File(targetFolder, file.getName());
+                if (file.renameTo(newFile)) {
+                    moved++;
+                }
+            }
+            
+            Toast.makeText(this, "Moved " + moved + " files", Toast.LENGTH_SHORT).show();
+            selectionMode = false;
+            selectedFiles.clear();
+            loadFiles();
+        });
+        builder.setNegativeButton("Cancel", (d, w) -> showSelectionActions());
+        builder.show();
+    }
+
+    private void collectFolders(File dir, java.util.List<File> folders) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        
+        for (File file : files) {
+            if (file.isDirectory()) {
+                folders.add(file);
+                collectFolders(file, folders);
+            }
+        }
+    }
+
+    private void deleteSelectedFiles() {
+        if (selectedFiles.isEmpty()) {
+            Toast.makeText(this, "No files selected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Delete " + selectedFiles.size() + " items?");
+        builder.setPositiveButton("Delete", (d, w) -> {
+            int deleted = 0;
+            for (File file : selectedFiles) {
+                if (deleteRecursive(file)) {
+                    deleted++;
+                }
+            }
+            Toast.makeText(this, "Deleted " + deleted + " items", Toast.LENGTH_SHORT).show();
+            selectionMode = false;
+            selectedFiles.clear();
+            loadFiles();
+        });
+        builder.setNegativeButton("Cancel", (d, w) -> showSelectionActions());
+        builder.show();
+    }
+
     private void showFolderMenu(File folder) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(folder.getName());
         
-        String[] options = new String[]{"New File Here", "New Folder Here", "Rename", "Delete"};
+        String[] options = new String[]{"New File Here", "New Folder Here", "Move", "Rename", "Delete"};
         
         builder.setItems(options, (d, which) -> {
             switch (which) {
                 case 0: createNewFileInFolder(folder); break;
                 case 1: createNewFolderInFolder(folder); break;
-                case 2: renameFile(folder); break;
-                case 3: deleteFile(folder); break;
+                case 2: moveSingleFile(folder); break;
+                case 3: renameFile(folder); break;
+                case 4: deleteFile(folder); break;
             }
         });
         builder.show();
@@ -323,25 +464,23 @@ public class IDEActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(file.getName());
         
-        String[] options = file.isDirectory() ? 
-            new String[]{"Rename", "Delete"} : 
-            new String[]{"Open", "Rename", "Delete"};
+        String[] options = new String[]{"Open", "Move", "Rename", "Delete"};
         
         builder.setItems(options, (d, which) -> {
-            if (file.isDirectory()) {
-                switch (which) {
-                    case 0: renameFile(file); break;
-                    case 1: deleteFile(file); break;
-                }
-            } else {
-                switch (which) {
-                    case 0: openFile(file); break;
-                    case 1: renameFile(file); break;
-                    case 2: deleteFile(file); break;
-                }
+            switch (which) {
+                case 0: openFile(file); break;
+                case 1: moveSingleFile(file); break;
+                case 2: renameFile(file); break;
+                case 3: deleteFile(file); break;
             }
         });
         builder.show();
+    }
+
+    private void moveSingleFile(File file) {
+        selectedFiles.clear();
+        selectedFiles.add(file);
+        moveSelectedFiles();
     }
 
     private void renameFile(File file) {
