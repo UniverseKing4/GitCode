@@ -62,31 +62,12 @@ public class IDEActivity extends AppCompatActivity {
             DrawerLayout.LayoutParams.MATCH_PARENT,
             DrawerLayout.LayoutParams.MATCH_PARENT));
         
-        // Toolbar with quick actions
-        LinearLayout toolbar = new LinearLayout(this);
-        toolbar.setOrientation(LinearLayout.HORIZONTAL);
-        toolbar.setBackgroundColor(0xFFF0F0F0);
-        toolbar.setPadding(5, 5, 5, 5);
-        toolbar.setLayoutParams(new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT));
-        
-        addToolbarButton(toolbar, "💾", "Save", v -> saveCurrentFile());
-        addToolbarButton(toolbar, "↶", "Undo", v -> undo());
-        addToolbarButton(toolbar, "↷", "Redo", v -> redo());
-        addToolbarButton(toolbar, "🔍", "Find", v -> showFindDialog());
-        addToolbarButton(toolbar, "⇄", "Replace", v -> showReplaceDialog());
-        addToolbarButton(toolbar, "🚀", "Push", v -> commitAndPushAll());
-        
-        mainLayout.addView(toolbar);
-        
         // Editor container
         LinearLayout editorContainer = new LinearLayout(this);
         editorContainer.setOrientation(LinearLayout.HORIZONTAL);
         editorContainer.setLayoutParams(new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
-            0,
-            1));
+            LinearLayout.LayoutParams.MATCH_PARENT));
         
         // Line numbers
         ScrollView lineNumberScroll = new ScrollView(this);
@@ -371,6 +352,19 @@ public class IDEActivity extends AppCompatActivity {
             getSupportActionBar().setTitle(projectName);
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setHomeAsUpIndicator(android.R.drawable.ic_menu_sort_by_size);
+            
+            // Add custom view with toolbar buttons
+            LinearLayout toolbarView = new LinearLayout(this);
+            toolbarView.setOrientation(LinearLayout.HORIZONTAL);
+            toolbarView.setGravity(Gravity.END);
+            
+            addCompactButton(toolbarView, "💾", v -> saveCurrentFile());
+            addCompactButton(toolbarView, "↶", v -> undo());
+            addCompactButton(toolbarView, "↷", v -> redo());
+            addCompactButton(toolbarView, "🚀", v -> commitAndPushAll());
+            
+            getSupportActionBar().setCustomView(toolbarView);
+            getSupportActionBar().setDisplayShowCustomEnabled(true);
         }
         
         loadFiles();
@@ -378,11 +372,13 @@ public class IDEActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(0, 1, 0, "Go to Line");
-        menu.add(0, 2, 0, "Select All");
-        menu.add(0, 3, 0, "Duplicate Line");
-        menu.add(0, 4, 0, "Delete Line");
-        menu.add(0, 5, 0, "Comment/Uncomment");
+        menu.add(0, 1, 0, "Find");
+        menu.add(0, 2, 0, "Replace");
+        menu.add(0, 3, 0, "Go to Line");
+        menu.add(0, 4, 0, "Select All");
+        menu.add(0, 5, 0, "Duplicate Line");
+        menu.add(0, 6, 0, "Delete Line");
+        menu.add(0, 7, 0, "Comment/Uncomment");
         return true;
     }
 
@@ -397,18 +393,24 @@ public class IDEActivity extends AppCompatActivity {
                 }
                 return true;
             case 1:
-                showGoToLineDialog();
+                showFindDialog();
                 return true;
             case 2:
-                editor.selectAll();
+                showReplaceDialog();
                 return true;
             case 3:
-                duplicateLine();
+                showGoToLineDialog();
                 return true;
             case 4:
-                deleteLine();
+                editor.selectAll();
                 return true;
             case 5:
+                duplicateLine();
+                return true;
+            case 6:
+                deleteLine();
+                return true;
+            case 7:
                 toggleComment();
                 return true;
         }
@@ -1113,19 +1115,16 @@ public class IDEActivity extends AppCompatActivity {
         });
     }
 
-    private void addToolbarButton(LinearLayout toolbar, String icon, String hint, View.OnClickListener listener) {
+    private void addCompactButton(LinearLayout toolbar, String icon, View.OnClickListener listener) {
         android.widget.Button btn = new android.widget.Button(this);
         btn.setText(icon);
-        btn.setTextSize(16);
-        btn.setPadding(15, 5, 15, 5);
+        btn.setTextSize(18);
+        btn.setPadding(20, 0, 20, 0);
         btn.setOnClickListener(listener);
-        btn.setBackgroundColor(0xFFE0E0E0);
+        btn.setBackgroundColor(0x00000000);
         btn.setLayoutParams(new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT));
-        LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) btn.getLayoutParams();
-        params.setMargins(3, 0, 3, 0);
-        btn.setLayoutParams(params);
         toolbar.addView(btn);
     }
 
