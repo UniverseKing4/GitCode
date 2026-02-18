@@ -172,18 +172,17 @@ public class IDEActivity extends AppCompatActivity {
                 // Track for undo/redo with time-based grouping
                 if (!isUndoRedo && !text.equals(before)) {
                     long currentTime = System.currentTimeMillis();
-                    if (currentTime - lastEditTime > UNDO_DELAY || undoStack.isEmpty()) {
-                        undoStack.push(before);
-                        if (undoStack.size() > 50) undoStack.remove(0);
-                    } else {
-                        // Replace last entry if within time window
-                        if (!undoStack.isEmpty()) {
-                            undoStack.pop();
+                    // Only save to undo stack if enough time has passed or significant change
+                    if (currentTime - lastEditTime > UNDO_DELAY) {
+                        if (!undoStack.isEmpty() && !undoStack.peek().equals(before)) {
+                            undoStack.push(before);
+                        } else if (undoStack.isEmpty()) {
+                            undoStack.push(before);
                         }
-                        undoStack.push(before);
+                        if (undoStack.size() > 50) undoStack.remove(0);
+                        redoStack.clear();
                     }
                     lastEditTime = currentTime;
-                    redoStack.clear();
                 }
                 
                 int selection = editor.getSelectionStart();
@@ -460,6 +459,9 @@ public class IDEActivity extends AppCompatActivity {
             String previous = undoStack.pop();
             isUndoRedo = true;
             editor.setText(previous);
+            if (currentFile != null) {
+                applySyntaxHighlighting(currentFile.getName(), previous);
+            }
             editor.setSelection(Math.min(previous.length(), editor.getText().length()));
             isUndoRedo = false;
         } else {
@@ -474,6 +476,9 @@ public class IDEActivity extends AppCompatActivity {
             String next = redoStack.pop();
             isUndoRedo = true;
             editor.setText(next);
+            if (currentFile != null) {
+                applySyntaxHighlighting(currentFile.getName(), next);
+            }
             editor.setSelection(Math.min(next.length(), editor.getText().length()));
             isUndoRedo = false;
         } else {
