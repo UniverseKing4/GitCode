@@ -148,66 +148,104 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void loadFiles() {
-        loadFiles(new File(projectPath), fileList);
+        loadFiles(new File(projectPath), fileList, 0);
     }
 
-    private void loadFiles(File dir, LinearLayout container) {
+    private void loadFiles(File dir, LinearLayout container, int depth) {
         container.removeAllViews();
         if (!dir.exists()) dir.mkdirs();
         
         File[] files = dir.listFiles();
         if (files == null || files.length == 0) {
-            TextView empty = new TextView(this);
-            empty.setText("No files yet");
-            empty.setPadding(20, 20, 20, 20);
-            container.addView(empty);
+            if (depth == 0) {
+                TextView empty = new TextView(this);
+                empty.setText("No files yet");
+                empty.setPadding(20, 20, 20, 20);
+                container.addView(empty);
+            }
             return;
         }
         
+        // Sort: folders first, then files
+        java.util.Arrays.sort(files, (f1, f2) -> {
+            if (f1.isDirectory() && !f2.isDirectory()) return -1;
+            if (!f1.isDirectory() && f2.isDirectory()) return 1;
+            return f1.getName().compareToIgnoreCase(f2.getName());
+        });
+        
         for (File file : files) {
-            LinearLayout itemLayout = new LinearLayout(this);
-            itemLayout.setOrientation(LinearLayout.HORIZONTAL);
-            itemLayout.setPadding(5, 5, 5, 5);
-            
-            TextView tv = new TextView(this);
-            if (file.isDirectory()) {
-                tv.setText("📁 " + file.getName());
-                tv.setOnClickListener(v -> expandFolder(file, container));
-            } else {
-                tv.setText("📄 " + file.getName());
-                tv.setOnClickListener(v -> openFile(file));
-            }
-            tv.setPadding(15, 10, 15, 10);
-            tv.setTextSize(16);
-            tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-            itemLayout.addView(tv);
-            
-            TextView btnMenu = new TextView(this);
-            btnMenu.setText("⋮");
-            btnMenu.setTextSize(20);
-            btnMenu.setPadding(10, 0, 10, 0);
-            btnMenu.setOnClickListener(v -> showFileMenu(file));
-            itemLayout.addView(btnMenu);
-            
-            container.addView(itemLayout);
+            createFileItem(file, container, depth);
         }
     }
 
+    private void createFileItem(File file, LinearLayout container, int depth) {
+        LinearLayout itemLayout = new LinearLayout(this);
+        itemLayout.setOrientation(LinearLayout.VERTICAL);
+        
+        LinearLayout rowLayout = new LinearLayout(this);
+        rowLayout.setOrientation(LinearLayout.HORIZONTAL);
+        rowLayout.setPadding(depth * 30 + 5, 5, 5, 5);
+        
+        if (file.isDirectory()) {
+            TextView arrow = new TextView(this);
+            arrow.setText("▶ ");
+            arrow.setTextSize(12);
+            arrow.setPadding(0, 10, 5, 0);
+            arrow.setTag("collapsed");
+            rowLayout.addView(arrow);
+            
+            TextView tv = new TextView(this);
+            tv.setText("📁 " + file.getName());
+            tv.setPadding(5, 10, 15, 10);
+            tv.setTextSize(16);
+            tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            rowLayout.addView(tv);
+            
+            LinearLayout subContainer = new LinearLayout(this);
+            subContainer.setOrientation(LinearLayout.VERTICAL);
+            subContainer.setVisibility(View.GONE);
+            
+            rowLayout.setOnClickListener(v -> {
+                if (arrow.getTag().equals("collapsed")) {
+                    arrow.setText("▼ ");
+                    arrow.setTag("expanded");
+                    subContainer.setVisibility(View.VISIBLE);
+                    if (subContainer.getChildCount() == 0) {
+                        loadFiles(file, subContainer, depth + 1);
+                    }
+                } else {
+                    arrow.setText("▶ ");
+                    arrow.setTag("collapsed");
+                    subContainer.setVisibility(View.GONE);
+                }
+            });
+            
+            itemLayout.addView(rowLayout);
+            itemLayout.addView(subContainer);
+        } else {
+            TextView tv = new TextView(this);
+            tv.setText("📄 " + file.getName());
+            tv.setPadding(15, 10, 15, 10);
+            tv.setTextSize(16);
+            tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            tv.setOnClickListener(v -> openFile(file));
+            rowLayout.addView(tv);
+            
+            itemLayout.addView(rowLayout);
+        }
+        
+        TextView btnMenu = new TextView(this);
+        btnMenu.setText("⋮");
+        btnMenu.setTextSize(20);
+        btnMenu.setPadding(10, 0, 10, 0);
+        btnMenu.setOnClickListener(v -> showFileMenu(file));
+        rowLayout.addView(btnMenu);
+        
+        container.addView(itemLayout);
+    }
+
     private void expandFolder(File folder, LinearLayout container) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(folder.getName());
-        
-        ScrollView scroll = new ScrollView(this);
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(20, 20, 20, 20);
-        
-        loadFiles(folder, layout);
-        
-        scroll.addView(layout);
-        builder.setView(scroll);
-        builder.setNegativeButton("Close", null);
-        builder.show();
+        // Removed - now handled inline with tree view
     }
 
     private void showFileMenu(File file) {
@@ -331,7 +369,8 @@ public class IDEActivity extends AppCompatActivity {
             
             currentFile = file;
             String content = new String(data);
-            editor.setText(content);
+            
+            applySyntaxHighlighting(file.getName(), content);
             
             if (getSupportActionBar() != null) {
                 getSupportActionBar().setSubtitle(file.getName());
@@ -343,7 +382,10 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void applySyntaxHighlighting(String fileName, String content) {
-        if (content == null || content.isEmpty()) return;
+        if (content == null || content.isEmpty()) {
+            editor.setText("");
+            return;
+        }
         
         String ext = "";
         int i = fileName.lastIndexOf('.');
@@ -351,14 +393,14 @@ public class IDEActivity extends AppCompatActivity {
             ext = fileName.substring(i + 1).toLowerCase();
         }
         
-        android.text.SpannableStringBuilder spannable = new android.text.SpannableStringBuilder(content);
-        
-        String[] keywords = getKeywordsForExtension(ext);
-        int keywordColor = 0xFF0000FF;
-        int stringColor = 0xFF008000;
-        int commentColor = 0xFF808080;
-        
         try {
+            android.text.SpannableString spannable = new android.text.SpannableString(content);
+            
+            String[] keywords = getKeywordsForExtension(ext);
+            int keywordColor = 0xFF0000FF;
+            int stringColor = 0xFF008000;
+            int commentColor = 0xFF808080;
+            
             // Highlight keywords
             for (String keyword : keywords) {
                 int start = 0;
@@ -379,27 +421,25 @@ public class IDEActivity extends AppCompatActivity {
             
             // Highlight comments
             highlightPattern(spannable, content, "//.*", commentColor);
-            highlightPattern(spannable, content, "/\\*.*?\\*/", commentColor);
             highlightPattern(spannable, content, "#.*", commentColor);
             
-            int selection = editor.getSelectionStart();
             editor.setText(spannable);
-            if (selection >= 0 && selection <= editor.getText().length()) {
-                editor.setSelection(selection);
-            }
         } catch (Exception e) {
-            // Fallback to plain text if highlighting fails
             editor.setText(content);
         }
     }
 
-    private void highlightPattern(android.text.SpannableStringBuilder spannable, String content, String regex, int color) {
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(regex);
-        java.util.regex.Matcher matcher = pattern.matcher(content);
-        while (matcher.find()) {
-            spannable.setSpan(new android.text.style.ForegroundColorSpan(color),
-                matcher.start(), matcher.end(),
-                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+    private void highlightPattern(android.text.Spannable spannable, String content, String regex, int color) {
+        try {
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(regex);
+            java.util.regex.Matcher matcher = pattern.matcher(content);
+            while (matcher.find()) {
+                spannable.setSpan(new android.text.style.ForegroundColorSpan(color),
+                    matcher.start(), matcher.end(),
+                    android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        } catch (Exception e) {
+            // Skip if pattern fails
         }
     }
 

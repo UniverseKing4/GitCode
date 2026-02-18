@@ -123,7 +123,10 @@ public class ProjectsActivity extends AppCompatActivity {
 
     private void saveProject(String name, String path) {
         String projects = prefs.getString("projects", "");
-        projects += name + "|" + path + ";";
+        // Get actual folder name from path
+        File dir = new File(path);
+        String actualName = dir.getName();
+        projects += actualName + "|" + path + ";";
         prefs.edit().putString("projects", projects).apply();
     }
 
