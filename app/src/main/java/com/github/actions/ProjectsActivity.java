@@ -50,20 +50,24 @@ public class ProjectsActivity extends AppCompatActivity {
         title.setText("GitCode");
         title.setTextSize(32);
         title.setTextColor(0xFF4CAF50);
-        title.setPadding(0, 20, 0, 5);
+        title.setPadding(0, 20, 0, 2);
         mainLayout.addView(title);
         
         View underline = new View(this);
         underline.setLayoutParams(new LinearLayout.LayoutParams(
-            (int)(200 * getResources().getDisplayMetrics().density),
+            LinearLayout.LayoutParams.WRAP_CONTENT,
             (int)(2 * getResources().getDisplayMetrics().density)));
         underline.setBackgroundColor(isDark ? 0xFFFFFFFF : 0xFF000000);
+        title.post(() -> {
+            underline.getLayoutParams().width = title.getWidth();
+            underline.requestLayout();
+        });
         mainLayout.addView(underline);
         
         View spacer = new View(this);
         spacer.setLayoutParams(new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
-            (int)(35 * getResources().getDisplayMetrics().density)));
+            (int)(38 * getResources().getDisplayMetrics().density)));
         mainLayout.addView(spacer);
         
         Button btnNew = new Button(this);
@@ -340,7 +344,6 @@ public class ProjectsActivity extends AppCompatActivity {
                         .putString("token", parts[1])
                         .apply();
                     Toast.makeText(this, "Active: " + username, Toast.LENGTH_SHORT).show();
-                    showProfiles();
                 });
                 row.addView(btn);
                 
@@ -362,14 +365,20 @@ public class ProjectsActivity extends AppCompatActivity {
         
         Button btnAdd = new Button(this);
         btnAdd.setText("+ Add Profile");
-        btnAdd.setOnClickListener(v -> addProfile());
         layout.addView(btnAdd);
         
         ScrollView scroll = new ScrollView(this);
         scroll.addView(layout);
         builder.setView(scroll);
         builder.setNegativeButton("Close", null);
-        builder.show();
+        AlertDialog dialog = builder.create();
+        
+        btnAdd.setOnClickListener(v -> {
+            dialog.dismiss();
+            addProfile();
+        });
+        
+        dialog.show();
     }
 
     private void addProfile() {
