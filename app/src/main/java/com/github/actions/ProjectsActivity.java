@@ -254,10 +254,20 @@ public class ProjectsActivity extends AppCompatActivity {
             String newName = input.getText().toString().trim();
             if (newName.isEmpty() || newName.equals(oldName)) return;
             
-            String projects = prefs.getString("projects", "");
-            projects = projects.replace(oldName + "|" + path, newName + "|" + path);
-            prefs.edit().putString("projects", projects).apply();
-            loadProjects();
+            // Rename the actual folder
+            File oldDir = new File(path);
+            File newDir = new File(oldDir.getParent(), newName);
+            
+            if (oldDir.renameTo(newDir)) {
+                String newPath = newDir.getAbsolutePath();
+                String projects = prefs.getString("projects", "");
+                projects = projects.replace(oldName + "|" + path, newName + "|" + newPath);
+                prefs.edit().putString("projects", projects).apply();
+                Toast.makeText(this, "Project renamed", Toast.LENGTH_SHORT).show();
+                loadProjects();
+            } else {
+                Toast.makeText(this, "Failed to rename project", Toast.LENGTH_SHORT).show();
+            }
         });
         builder.setNegativeButton("Cancel", null);
         builder.show();
