@@ -189,6 +189,20 @@ public class ProjectsActivity extends AppCompatActivity {
         
         String[] projectArray = projects.split(";");
         StringBuilder validProjects = new StringBuilder();
+        File gitCodeDir = new File(Environment.getExternalStorageDirectory(), "GitCode");
+        
+        // Build a map of all folders in GitCode directory
+        java.util.Map<String, File> allFolders = new java.util.HashMap<>();
+        if (gitCodeDir.exists() && gitCodeDir.isDirectory()) {
+            File[] folders = gitCodeDir.listFiles();
+            if (folders != null) {
+                for (File folder : folders) {
+                    if (folder.isDirectory()) {
+                        allFolders.put(folder.getName(), folder);
+                    }
+                }
+            }
+        }
         
         for (String project : projectArray) {
             if (project.isEmpty()) continue;
@@ -200,28 +214,13 @@ public class ProjectsActivity extends AppCompatActivity {
             
             File dir = new File(savedPath);
             
-            // If exact path doesn't exist, search parent directory for any folder
-            if (!dir.exists()) {
-                File parentDir = new File(savedPath).getParentFile();
-                if (parentDir != null && parentDir.exists()) {
-                    // Look for ANY folder in the parent directory (could be renamed)
-                    File[] folders = parentDir.listFiles();
-                    if (folders != null) {
-                        // Try to find by saved name first
-                        for (File folder : folders) {
-                            if (folder.isDirectory() && folder.getName().equals(savedName)) {
-                                dir = folder;
-                                break;
-                            }
-                        }
-                        // If not found by name and there's only one folder, assume it's renamed
-                        if (!dir.exists() && folders.length == 1 && folders[0].isDirectory()) {
-                            dir = folders[0];
-                        }
-                    }
-                }
-                if (!dir.exists()) continue;
+            // If path doesn't exist, try to find by name in GitCode directory
+            if (!dir.exists() && allFolders.containsKey(savedName)) {
+                dir = allFolders.get(savedName);
             }
+            
+            // Skip if still not found
+            if (!dir.exists()) continue;
             
             String actualName = dir.getName();
             String actualPath = dir.getAbsolutePath();
