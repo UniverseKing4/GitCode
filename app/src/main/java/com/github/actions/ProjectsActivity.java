@@ -568,6 +568,14 @@ public class ProjectsActivity extends AppCompatActivity {
         btnDarkMode.setText(isDark ? "☀ Switch to Light Mode" : "🌙 Switch to Dark Mode");
         layout.addView(btnDarkMode);
         
+        builder.setView(layout);
+        builder.setPositiveButton("Save", (d, w) -> {
+            int size = seekBar.getProgress() + 10;
+            settingsPrefs.edit().putInt("fontSize", size).apply();
+            Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show();
+        });
+        builder.setNegativeButton("Cancel", null);
+        
         AlertDialog dialog = builder.create();
         
         btnDarkMode.setOnClickListener(v -> {
@@ -577,13 +585,6 @@ public class ProjectsActivity extends AppCompatActivity {
             recreate();
         });
         
-        builder.setView(layout);
-        builder.setPositiveButton("Save", (d, w) -> {
-            int size = seekBar.getProgress() + 10;
-            settingsPrefs.edit().putInt("fontSize", size).apply();
-            Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show();
-        });
-        builder.setNegativeButton("Cancel", null);
         dialog.show();
     }
 }
