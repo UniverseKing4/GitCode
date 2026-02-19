@@ -24,7 +24,7 @@ public class ProjectsActivity extends AppCompatActivity {
         
         // Apply dark mode
         SharedPreferences themePrefs = getSharedPreferences("GitCodeTheme", MODE_PRIVATE);
-        boolean isDark = themePrefs.getBoolean("darkMode", false);
+        boolean isDark = themePrefs.getBoolean("darkMode", true);
         
         // Dark navigation bar
         if (isDark && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
