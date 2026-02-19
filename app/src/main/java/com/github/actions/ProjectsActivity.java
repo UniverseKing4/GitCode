@@ -193,6 +193,22 @@ public class ProjectsActivity extends AppCompatActivity {
         StringBuilder validProjects = new StringBuilder();
         File gitCodeDir = new File(Environment.getExternalStorageDirectory(), "GitCode");
         
+        // First, get all existing folders in GitCode directory
+        java.util.Map<String, String> existingFolders = new java.util.HashMap<>();
+        if (gitCodeDir.exists()) {
+            File[] allFolders = gitCodeDir.listFiles();
+            if (allFolders != null) {
+                for (File folder : allFolders) {
+                    if (folder.isDirectory()) {
+                        existingFolders.put(folder.getName(), folder.getAbsolutePath());
+                    }
+                }
+            }
+        }
+        
+        // Track which folders we've added
+        java.util.Set<String> addedFolders = new java.util.HashSet<>();
+        
         for (String project : projectArray) {
             if (project.isEmpty()) continue;
             String[] parts = project.split("\\|");
@@ -203,29 +219,24 @@ public class ProjectsActivity extends AppCompatActivity {
             
             File dir = new File(path);
             
-            // If path doesn't exist, search in GitCode directory for folder with matching name
+            // If path doesn't exist, try to find folder by name
             if (!dir.exists()) {
-                if (gitCodeDir.exists()) {
-                    File[] allProjects = gitCodeDir.listFiles();
-                    if (allProjects != null) {
-                        for (File projectDir : allProjects) {
-                            if (projectDir.isDirectory() && projectDir.getName().equals(name)) {
-                                dir = projectDir;
-                                path = projectDir.getAbsolutePath();
-                                break;
-                            }
-                        }
-                    }
+                if (existingFolders.containsKey(name)) {
+                    path = existingFolders.get(name);
+                    dir = new File(path);
+                } else {
+                    continue; // Skip if not found
                 }
-                // If still not found, skip this project
-                if (!dir.exists()) continue;
             }
             
             // Get actual folder name and path
             String actualName = dir.getName();
             String actualPath = dir.getAbsolutePath();
             
-            validProjects.append(actualName).append("|").append(actualPath).append(";");
+            if (!addedFolders.contains(actualName)) {
+                validProjects.append(actualName).append("|").append(actualPath).append(";");
+                addedFolders.add(actualName);
+            }
             
             LinearLayout projectItem = new LinearLayout(this);
             projectItem.setOrientation(LinearLayout.HORIZONTAL);

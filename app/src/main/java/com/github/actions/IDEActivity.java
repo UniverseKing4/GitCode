@@ -473,7 +473,7 @@ public class IDEActivity extends AppCompatActivity {
             LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.MATCH_PARENT);
-            titleParams.setMargins(0, 0, 50, 0);
+            titleParams.setMargins(0, 0, 80, 0);
             titleView.setLayoutParams(titleParams);
             titleView.setMaxWidth((int)(150 * getResources().getDisplayMetrics().density));
             titleView.setSingleLine(true);
@@ -1859,11 +1859,12 @@ public class IDEActivity extends AppCompatActivity {
                     String gitkeepPath = filePath + "/.gitkeep";
                     currentFiles.add(gitkeepPath);
                     long gitkeepTime = pushPrefs.getLong(gitkeepPath, 0);
+                    // Only push .gitkeep if it doesn't exist on remote yet
                     if (gitkeepTime == 0) {
                         String result = api.commitAndPush(gitkeepPath, "", message);
                         if (result.contains("Success")) {
                             pushPrefs.edit().putLong(gitkeepPath, System.currentTimeMillis()).apply();
-                            success++; // Count folder creation
+                            success++;
                         }
                     }
                 } else {
