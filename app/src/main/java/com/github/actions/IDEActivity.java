@@ -1560,7 +1560,13 @@ public class IDEActivity extends AppCompatActivity {
             highlightPattern(spannable, content, "#.*", commentColor);
             highlightPattern(spannable, content, "/\\*.*?\\*/", commentColor);
             
+            // Save cursor position
+            int cursorPos = editor.getSelectionStart();
             editor.setText(spannable);
+            // Restore cursor position
+            if (cursorPos >= 0 && cursorPos <= spannable.length()) {
+                editor.setSelection(cursorPos);
+            }
         } catch (Exception e) {
             editor.setText(content);
         }
