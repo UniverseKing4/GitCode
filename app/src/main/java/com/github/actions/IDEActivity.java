@@ -436,21 +436,43 @@ public class IDEActivity extends AppCompatActivity {
             if (isDark) {
                 getSupportActionBar().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF2D2D2D));
             }
-            getSupportActionBar().setTitle("📁 " + projectName);
+            
+            // Create title with project name
+            TextView titleView = new TextView(this);
+            titleView.setText("📁 " + projectName);
+            titleView.setTextColor(isDark ? 0xFFFFFFFF : 0xFF000000);
+            titleView.setTextSize(18);
+            titleView.setPadding(0, 0, 20, 0);
+            
+            getSupportActionBar().setDisplayShowTitleEnabled(false);
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setHomeAsUpIndicator(android.R.drawable.ic_menu_sort_by_size);
             
-            // Add custom view with toolbar buttons
+            // Add custom view with title and toolbar buttons
+            LinearLayout toolbarContainer = new LinearLayout(this);
+            toolbarContainer.setOrientation(LinearLayout.HORIZONTAL);
+            toolbarContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+            
+            toolbarContainer.addView(titleView);
+            
             LinearLayout toolbarView = new LinearLayout(this);
             toolbarView.setOrientation(LinearLayout.HORIZONTAL);
             toolbarView.setGravity(Gravity.END);
+            toolbarView.setLayoutParams(new LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1));
             
             addCompactButton(toolbarView, "💾", v -> saveCurrentFile());
             addCompactButton(toolbarView, "↶", v -> undo());
             addCompactButton(toolbarView, "↷", v -> redo());
             addCompactButton(toolbarView, "🚀", v -> commitAndPushAll());
             
-            getSupportActionBar().setCustomView(toolbarView);
+            toolbarContainer.addView(toolbarView);
+            
+            getSupportActionBar().setCustomView(toolbarContainer);
             getSupportActionBar().setDisplayShowCustomEnabled(true);
         }
         
@@ -1378,11 +1400,14 @@ public class IDEActivity extends AppCompatActivity {
         }
         lineNumbers.setText(sb.toString());
         
-        // Dynamically adjust width based on digits - very compact
-        int digits = String.valueOf(lines).length();
-        int width = (int)((10 + digits * 9) * getResources().getDisplayMetrics().density);
-        lineNumberScroll.getLayoutParams().width = width;
-        lineNumberScroll.requestLayout();
+        // Measure actual text width for PERFECT fit
+        lineNumbers.post(() -> {
+            lineNumbers.measure(0, 0);
+            int measuredWidth = lineNumbers.getMeasuredWidth();
+            int perfectWidth = measuredWidth + (int)(4 * getResources().getDisplayMetrics().density);
+            lineNumberScroll.getLayoutParams().width = perfectWidth;
+            lineNumberScroll.requestLayout();
+        });
         
         // Match height with editor content
         lineNumbers.post(() -> {
