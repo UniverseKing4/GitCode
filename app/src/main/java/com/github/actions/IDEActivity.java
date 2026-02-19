@@ -234,17 +234,19 @@ public class IDEActivity extends AppCompatActivity {
             
             public void afterTextChanged(android.text.Editable s) {
                 if (isProcessing) return;
-                
-                // Skip ALL processing for large files
-                if (isLargeFile) {
-                    isProcessing = false;
-                    return;
-                }
-                
                 isProcessing = true;
                 
                 String text = s.toString();
                 long currentTime = System.currentTimeMillis();
+                
+                // Skip heavy operations for large files
+                if (isLargeFile) {
+                    // Only auto-save for large files
+                    autoSaveHandler.removeCallbacks(autoSaveRunnable);
+                    autoSaveHandler.postDelayed(autoSaveRunnable, 2000);
+                    isProcessing = false;
+                    return;
+                }
                 
                 // Update line numbers only every 100ms to reduce lag
                 if (currentTime - lastUpdateTime > 100) {
@@ -742,6 +744,9 @@ public class IDEActivity extends AppCompatActivity {
     private String lastSearchText = "";
     private String lastReplaceText = "";
     private boolean isLargeFile = false;
+    private String fullFileContent = "";
+    private int currentChunkStart = 0;
+    private static final int CHUNK_SIZE = 10000; // 10KB chunks
     
     private void showFindDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -1419,97 +1424,108 @@ public class IDEActivity extends AppCompatActivity {
             }
             
             long fileSize = file.length();
-            isLargeFile = fileSize > 50000; // 50KB threshold
+            isLargeFile = fileSize > 100000; // 100KB threshold
+            
+            FileInputStream fis = new FileInputStream(file);
+            byte[] data = new byte[(int) fileSize];
+            fis.read(data);
+            fis.close();
+            
+            currentFile = file;
+            String content = new String(data);
+            
+            undoStack.clear();
+            redoStack.clear();
             
             if (isLargeFile) {
-                // Show loading message
-                editor.setText("Loading large file...");
-                editor.setEnabled(false);
+                // Store full content
+                fullFileContent = content;
+                currentChunkStart = 0;
                 
-                // Load large file asynchronously
-                executor.execute(() -> {
-                    try {
-                        FileInputStream fis = new FileInputStream(file);
-                        byte[] data = new byte[(int) fileSize];
-                        fis.read(data);
-                        fis.close();
-                        
-                        String content = new String(data);
-                        
-                        runOnUiThread(() -> {
-                            currentFile = file;
-                            undoStack.clear();
-                            redoStack.clear();
-                            
-                            // Disable ALL text watchers for large files
-                            editor.removeTextChangedListener(null);
-                            
-                            // Set text without triggering watchers
-                            editor.setText(content);
-                            editor.setEnabled(true);
-                            
-                            // Disable undo/redo for large files
-                            editor.setInputType(android.text.InputType.TYPE_CLASS_TEXT | 
-                                              android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE | 
-                                              android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-                            
-                            // Update line numbers once in background
-                            executor.execute(() -> {
-                                String[] lines = content.split("\n", -1);
-                                int lineCount = lines.length;
-                                StringBuilder sb = new StringBuilder();
-                                for (int i = 1; i <= lineCount; i++) {
-                                    sb.append(i);
-                                    if (i < lineCount) sb.append("\n");
-                                }
-                                String lineNumberText = sb.toString();
-                                
-                                runOnUiThread(() -> {
-                                    lineNumbers.setText(lineNumberText);
-                                    lineNumbers.post(() -> {
-                                        lineNumbers.measure(0, 0);
-                                        int measuredWidth = lineNumbers.getMeasuredWidth();
-                                        int perfectWidth = measuredWidth + (int)(4 * getResources().getDisplayMetrics().density);
-                                        lineNumberScroll.getLayoutParams().width = perfectWidth;
-                                        lineNumberScroll.requestLayout();
-                                    });
-                                });
-                            });
-                            
-                            Toast.makeText(this, "Large file mode - some features disabled for performance", Toast.LENGTH_LONG).show();
-                            
-                            saveFileState(file);
-                            updateTabsAndUI(file);
-                        });
-                    } catch (Exception e) {
-                        runOnUiThread(() -> {
-                            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                            editor.setEnabled(true);
-                        });
-                    }
-                });
+                // Load only first chunk
+                String chunk = getChunk(0);
+                editor.setText(chunk);
+                editor.setEnabled(true);
+                
+                // Show navigation info
+                int totalChunks = (fullFileContent.length() + CHUNK_SIZE - 1) / CHUNK_SIZE;
+                Toast.makeText(this, "Large file - showing part 1/" + totalChunks + " (swipe to navigate)", Toast.LENGTH_LONG).show();
+                
+                // Add swipe gesture for navigation
+                setupChunkNavigation();
             } else {
-                // Load small file normally
-                FileInputStream fis = new FileInputStream(file);
-                byte[] data = new byte[(int) fileSize];
-                fis.read(data);
-                fis.close();
-                
-                currentFile = file;
-                String content = new String(data);
-                
-                undoStack.clear();
-                redoStack.clear();
-                
+                fullFileContent = "";
                 editor.setText(content);
                 editor.setEnabled(true);
                 applySyntaxHighlighting(file.getName(), content);
-                
-                saveFileState(file);
-                updateTabsAndUI(file);
             }
+            
+            saveFileState(file);
+            updateTabsAndUI(file);
         } catch (Exception e) {
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    private String getChunk(int startPos) {
+        if (fullFileContent.isEmpty()) return "";
+        int end = Math.min(startPos + CHUNK_SIZE, fullFileContent.length());
+        return fullFileContent.substring(startPos, end);
+    }
+    
+    private void setupChunkNavigation() {
+        // Remove existing listener
+        editor.setOnTouchListener(null);
+        
+        // Add gesture detector for swipe
+        final android.view.GestureDetector gestureDetector = new android.view.GestureDetector(this,
+            new android.view.GestureDetector.SimpleOnGestureListener() {
+                @Override
+                public boolean onFling(android.view.MotionEvent e1, android.view.MotionEvent e2, float velocityX, float velocityY) {
+                    if (!isLargeFile) return false;
+                    
+                    float diffY = e2.getY() - e1.getY();
+                    if (Math.abs(diffY) > 100 && Math.abs(velocityY) > 100) {
+                        if (diffY > 0) {
+                            // Swipe down - previous chunk
+                            loadPreviousChunk();
+                        } else {
+                            // Swipe up - next chunk
+                            loadNextChunk();
+                        }
+                        return true;
+                    }
+                    return false;
+                }
+            });
+        
+        editor.setOnTouchListener((v, event) -> {
+            gestureDetector.onTouchEvent(event);
+            return false;
+        });
+    }
+    
+    private void loadNextChunk() {
+        if (currentChunkStart + CHUNK_SIZE < fullFileContent.length()) {
+            currentChunkStart += CHUNK_SIZE;
+            String chunk = getChunk(currentChunkStart);
+            editor.setText(chunk);
+            
+            int currentPart = (currentChunkStart / CHUNK_SIZE) + 1;
+            int totalChunks = (fullFileContent.length() + CHUNK_SIZE - 1) / CHUNK_SIZE;
+            Toast.makeText(this, "Part " + currentPart + "/" + totalChunks, Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    private void loadPreviousChunk() {
+        if (currentChunkStart > 0) {
+            currentChunkStart = Math.max(0, currentChunkStart - CHUNK_SIZE);
+            String chunk = getChunk(currentChunkStart);
+            editor.setText(chunk);
+            
+            int currentPart = (currentChunkStart / CHUNK_SIZE) + 1;
+            int totalChunks = (fullFileContent.length() + CHUNK_SIZE - 1) / CHUNK_SIZE;
+            Toast.makeText(this, "Part " + currentPart + "/" + totalChunks, Toast.LENGTH_SHORT).show();
         }
     }
     
@@ -1877,7 +1893,17 @@ public class IDEActivity extends AppCompatActivity {
         
         try {
             FileOutputStream fos = new FileOutputStream(currentFile);
-            fos.write(editor.getText().toString().getBytes());
+            if (isLargeFile && !fullFileContent.isEmpty()) {
+                // For large files, update the chunk in full content and save all
+                String currentChunk = editor.getText().toString();
+                String before = fullFileContent.substring(0, currentChunkStart);
+                int chunkEnd = Math.min(currentChunkStart + CHUNK_SIZE, fullFileContent.length());
+                String after = chunkEnd < fullFileContent.length() ? fullFileContent.substring(chunkEnd) : "";
+                fullFileContent = before + currentChunk + after;
+                fos.write(fullFileContent.getBytes());
+            } else {
+                fos.write(editor.getText().toString().getBytes());
+            }
             fos.close();
         } catch (Exception e) {
             // Silent fail for auto-save
