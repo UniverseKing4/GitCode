@@ -528,18 +528,21 @@ public class IDEActivity extends AppCompatActivity {
         label.setText("Font Size:");
         layout.addView(label);
         
+        SharedPreferences settingsPrefs = getSharedPreferences("GitCodeSettings", MODE_PRIVATE);
+        int currentSize = settingsPrefs.getInt("fontSize", 14);
+        
         android.widget.SeekBar seekBar = new android.widget.SeekBar(this);
         seekBar.setMax(20);
-        seekBar.setProgress((int)editor.getTextSize() / 2 - 10);
+        seekBar.setProgress(currentSize - 10);
         
         TextView sizeLabel = new TextView(this);
-        sizeLabel.setText("Current: " + (int)editor.getTextSize() / 2 + "sp");
+        sizeLabel.setText("Size: " + currentSize + "sp");
         layout.addView(sizeLabel);
         
         seekBar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
                 int size = progress + 10;
-                sizeLabel.setText("Current: " + size + "sp");
+                sizeLabel.setText("Size: " + size + "sp");
             }
             public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
             public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
@@ -551,9 +554,8 @@ public class IDEActivity extends AppCompatActivity {
             int size = seekBar.getProgress() + 10;
             editor.setTextSize(size);
             lineNumbers.setTextSize(size);
-            SharedPreferences prefs = getSharedPreferences("GitCodeSettings", MODE_PRIVATE);
-            prefs.edit().putInt("fontSize", size).apply();
-            Toast.makeText(this, "Font size updated", Toast.LENGTH_SHORT).show();
+            settingsPrefs.edit().putInt("fontSize", size).apply();
+            Toast.makeText(this, "Font size: " + size + "sp", Toast.LENGTH_SHORT).show();
         });
         builder.setNegativeButton("Cancel", null);
         builder.show();
@@ -1298,11 +1300,15 @@ public class IDEActivity extends AppCompatActivity {
         SharedPreferences themePrefs = getSharedPreferences("GitCodeTheme", MODE_PRIVATE);
         boolean isDark = themePrefs.getBoolean("darkMode", false);
         
-        for (int i = 0; i < tabBar.getChildCount(); i++) {
-            LinearLayout tab = (LinearLayout) tabBar.getChildAt(i);
-            tab.setBackgroundColor(openTabs.get(i).equals(file) ? 
-                (isDark ? 0xFF1E1E1E : 0xFFFFFFFF) : 
-                (isDark ? 0xFF2D2D2D : 0xFFE0E0E0));
+        for (int i = 0; i < tabBar.getChildCount() && i < openTabs.size(); i++) {
+            try {
+                LinearLayout tab = (LinearLayout) tabBar.getChildAt(i);
+                tab.setBackgroundColor(openTabs.get(i).equals(file) ? 
+                    (isDark ? 0xFF1E1E1E : 0xFFFFFFFF) : 
+                    (isDark ? 0xFF2D2D2D : 0xFFE0E0E0));
+            } catch (Exception e) {
+                // Skip if index mismatch
+            }
         }
     }
 
@@ -1330,6 +1336,12 @@ public class IDEActivity extends AppCompatActivity {
             if (i < lines) sb.append("\n");
         }
         lineNumbers.setText(sb.toString());
+        
+        // Adjust width based on number of digits
+        int digits = String.valueOf(lines).length();
+        int width = (int)((20 + digits * 10) * getResources().getDisplayMetrics().density);
+        lineNumberScroll.getLayoutParams().width = width;
+        lineNumberScroll.requestLayout();
         
         // Match height with editor content
         lineNumbers.post(() -> {

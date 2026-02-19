@@ -67,6 +67,11 @@ public class ProjectsActivity extends AppCompatActivity {
         btnProfiles.setOnClickListener(v -> showProfiles());
         mainLayout.addView(btnProfiles);
         
+        Button btnSettings = new Button(this);
+        btnSettings.setText("⚙ Settings");
+        btnSettings.setOnClickListener(v -> showSettings());
+        mainLayout.addView(btnSettings);
+        
         Button btnDarkMode = new Button(this);
         btnDarkMode.setText(isDark ? "☀ Light Mode" : "🌙 Dark Mode");
         btnDarkMode.setOnClickListener(v -> {
@@ -517,5 +522,48 @@ public class ProjectsActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         loadProjects();
+    }
+
+    private void showSettings() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("App Settings");
+        
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 20, 50, 20);
+        
+        TextView label = new TextView(this);
+        label.setText("Default Font Size:");
+        layout.addView(label);
+        
+        SharedPreferences settingsPrefs = getSharedPreferences("GitCodeSettings", MODE_PRIVATE);
+        int currentSize = settingsPrefs.getInt("fontSize", 14);
+        
+        android.widget.SeekBar seekBar = new android.widget.SeekBar(this);
+        seekBar.setMax(20);
+        seekBar.setProgress(currentSize - 10);
+        
+        TextView sizeLabel = new TextView(this);
+        sizeLabel.setText("Size: " + currentSize + "sp");
+        layout.addView(sizeLabel);
+        
+        seekBar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                int size = progress + 10;
+                sizeLabel.setText("Size: " + size + "sp");
+            }
+            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
+        });
+        layout.addView(seekBar);
+        
+        builder.setView(layout);
+        builder.setPositiveButton("Save", (d, w) -> {
+            int size = seekBar.getProgress() + 10;
+            settingsPrefs.edit().putInt("fontSize", size).apply();
+            Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show();
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
     }
 }
