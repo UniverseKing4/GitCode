@@ -95,4 +95,48 @@ public class GitHubAPI {
         } catch (Exception ignored) {}
         return null;
     }
+
+    public String checkRepoExists() {
+        try {
+            String url = "https://api.github.com/repos/" + username + "/" + repo;
+            Request request = new Request.Builder()
+                .url(url)
+                .header("Authorization", "token " + token)
+                .get()
+                .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful()) {
+                    return "Success";
+                } else {
+                    return "Error: " + response.code();
+                }
+            }
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    public String pullFile(String path) {
+        try {
+            String url = "https://api.github.com/repos/" + username + "/" + repo + "/contents/" + path;
+            Request request = new Request.Builder()
+                .url(url)
+                .header("Authorization", "token " + token)
+                .get()
+                .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    JSONObject json = new JSONObject(response.body().string());
+                    String content = json.getString("content");
+                    return new String(Base64.decode(content, Base64.DEFAULT));
+                } else {
+                    return null;
+                }
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

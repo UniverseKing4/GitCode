@@ -57,6 +57,11 @@ public class ProjectsActivity extends AppCompatActivity {
         btnNew.setOnClickListener(v -> createProject());
         mainLayout.addView(btnNew);
         
+        Button btnClone = new Button(this);
+        btnClone.setText("📥 Clone from GitHub");
+        btnClone.setOnClickListener(v -> cloneRepo());
+        mainLayout.addView(btnClone);
+        
         Button btnProfiles = new Button(this);
         btnProfiles.setText("⚙ GitHub Profiles");
         btnProfiles.setOnClickListener(v -> showProfiles());
@@ -386,6 +391,82 @@ public class ProjectsActivity extends AppCompatActivity {
         });
         builder.setNegativeButton("Cancel", null);
         builder.show();
+    }
+
+    private void cloneRepo() {
+        SharedPreferences creds = getSharedPreferences("GitHubCreds", MODE_PRIVATE);
+        String username = creds.getString("username", "");
+        String token = creds.getString("token", "");
+        
+        if (username.isEmpty() || token.isEmpty()) {
+            Toast.makeText(this, "Configure GitHub profile first", Toast.LENGTH_LONG).show();
+            return;
+        }
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Clone Repository");
+        
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 20, 50, 20);
+        
+        EditText etRepo = new EditText(this);
+        etRepo.setHint("Repository name");
+        layout.addView(etRepo);
+        
+        builder.setView(layout);
+        builder.setPositiveButton("Clone", (d, w) -> {
+            String repo = etRepo.getText().toString().trim();
+            if (repo.isEmpty()) {
+                Toast.makeText(this, "Enter repository name", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            cloneRepoFromGitHub(username, token, repo);
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private void cloneRepoFromGitHub(String username, String token, String repo) {
+        Toast.makeText(this, "Cloning repository...", Toast.LENGTH_SHORT).show();
+        
+        new Thread(() -> {
+            GitHubAPI api = new GitHubAPI(username, token, repo);
+            
+            // Check if repo exists
+            String repoCheck = api.checkRepoExists();
+            if (repoCheck.contains("Error: 404")) {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Repository '" + repo + "' not found", Toast.LENGTH_LONG).show();
+                });
+                return;
+            } else if (repoCheck.contains("Error")) {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Failed to connect: " + repoCheck, Toast.LENGTH_LONG).show();
+                });
+                return;
+            }
+            
+            // Create project folder
+            String path = Environment.getExternalStorageDirectory() + "/GitCode/" + repo;
+            File dir = new File(path);
+            if (dir.exists()) {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Project already exists", Toast.LENGTH_SHORT).show();
+                });
+                return;
+            }
+            
+            dir.mkdirs();
+            saveProject(repo, path);
+            
+            runOnUiThread(() -> {
+                Toast.makeText(this, "✓ Repository cloned", Toast.LENGTH_SHORT).show();
+                loadProjects();
+                openProject(repo, path);
+            });
+        }).start();
     }
 
     @Override

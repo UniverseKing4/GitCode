@@ -410,7 +410,7 @@ public class IDEActivity extends AppCompatActivity {
             if (isDark) {
                 getSupportActionBar().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF2D2D2D));
             }
-            getSupportActionBar().setTitle(projectName);
+            getSupportActionBar().setTitle("📁 " + projectName);
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setHomeAsUpIndicator(android.R.drawable.ic_menu_sort_by_size);
             
@@ -422,6 +422,7 @@ public class IDEActivity extends AppCompatActivity {
             addCompactButton(toolbarView, "💾", v -> saveCurrentFile());
             addCompactButton(toolbarView, "↶", v -> undo());
             addCompactButton(toolbarView, "↷", v -> redo());
+            addCompactButton(toolbarView, "⬇", v -> pullFromGitHub());
             addCompactButton(toolbarView, "🚀", v -> commitAndPushAll());
             
             getSupportActionBar().setCustomView(toolbarView);
@@ -1442,6 +1443,21 @@ public class IDEActivity extends AppCompatActivity {
         Toast.makeText(this, "Pushing changes...", Toast.LENGTH_SHORT).show();
         executor.execute(() -> {
             GitHubAPI api = new GitHubAPI(username, token, repo);
+            
+            // Check if repo exists
+            String repoCheck = api.checkRepoExists();
+            if (repoCheck.contains("Error: 404")) {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Repository '" + repo + "' not found on GitHub", Toast.LENGTH_LONG).show();
+                });
+                return;
+            } else if (repoCheck.contains("Error")) {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Failed to connect: " + repoCheck, Toast.LENGTH_LONG).show();
+                });
+                return;
+            }
+            
             File dir = new File(projectPath);
             
             // Get last push data
@@ -1562,6 +1578,77 @@ public class IDEActivity extends AppCompatActivity {
         super.onDestroy();
         autoSaveHandler.removeCallbacks(autoSaveRunnable);
         executor.shutdown();
+    }
+
+    private void pullFromGitHub() {
+        String username = prefs.getString("username", "");
+        String token = prefs.getString("token", "");
+        
+        if (username.isEmpty() || token.isEmpty()) {
+            Toast.makeText(this, "Configure GitHub profile first", Toast.LENGTH_LONG).show();
+            return;
+        }
+        
+        Toast.makeText(this, "Pulling from GitHub...", Toast.LENGTH_SHORT).show();
+        executor.execute(() -> {
+            GitHubAPI api = new GitHubAPI(username, token, projectName);
+            
+            // Check if repo exists
+            String repoCheck = api.checkRepoExists();
+            if (repoCheck.contains("Error: 404")) {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Repository '" + projectName + "' not found on GitHub", Toast.LENGTH_LONG).show();
+                });
+                return;
+            } else if (repoCheck.contains("Error")) {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Failed to connect: " + repoCheck, Toast.LENGTH_LONG).show();
+                });
+                return;
+            }
+            
+            // Pull all files
+            int pulled = pullAllFiles(api, new File(projectPath), "");
+            
+            runOnUiThread(() -> {
+                if (pulled > 0) {
+                    Toast.makeText(this, "✓ Pulled " + pulled + " files", Toast.LENGTH_LONG).show();
+                    loadFiles();
+                    if (currentFile != null) {
+                        openFile(currentFile);
+                    }
+                } else {
+                    Toast.makeText(this, "No files to pull", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+    }
+
+    private int pullAllFiles(GitHubAPI api, File dir, String relativePath) {
+        int count = 0;
+        File[] files = dir.listFiles();
+        if (files == null) return 0;
+        
+        for (File file : files) {
+            String filePath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
+            
+            if (file.isDirectory()) {
+                count += pullAllFiles(api, file, filePath);
+            } else {
+                String content = api.pullFile(filePath);
+                if (content != null) {
+                    try {
+                        java.io.FileOutputStream fos = new java.io.FileOutputStream(file);
+                        fos.write(content.getBytes());
+                        fos.close();
+                        count++;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        return count;
     }
 
     @Override
