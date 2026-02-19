@@ -72,15 +72,6 @@ public class ProjectsActivity extends AppCompatActivity {
         btnSettings.setOnClickListener(v -> showSettings());
         mainLayout.addView(btnSettings);
         
-        Button btnDarkMode = new Button(this);
-        btnDarkMode.setText(isDark ? "☀ Light Mode" : "🌙 Dark Mode");
-        btnDarkMode.setOnClickListener(v -> {
-            boolean currentDark = themePrefs.getBoolean("darkMode", false);
-            themePrefs.edit().putBoolean("darkMode", !currentDark).apply();
-            recreate();
-        });
-        mainLayout.addView(btnDarkMode);
-        
         TextView projectsTitle = new TextView(this);
         projectsTitle.setText("Recent Projects");
         projectsTitle.setTextSize(20);
@@ -210,11 +201,15 @@ public class ProjectsActivity extends AppCompatActivity {
             
             Button btnEdit = new Button(this);
             btnEdit.setText("✏️");
+            btnEdit.setTextSize(14);
+            btnEdit.setPadding(10, 0, 10, 0);
             btnEdit.setOnClickListener(v -> editProject(actualName, path));
             projectItem.addView(btnEdit);
             
             Button btnDelete = new Button(this);
             btnDelete.setText("🗑");
+            btnDelete.setTextSize(14);
+            btnDelete.setPadding(10, 0, 10, 0);
             btnDelete.setOnClickListener(v -> deleteProject(actualName, path));
             projectItem.addView(btnDelete);
             
@@ -556,6 +551,23 @@ public class ProjectsActivity extends AppCompatActivity {
             public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
         });
         layout.addView(seekBar);
+        
+        // Dark mode toggle
+        TextView darkModeLabel = new TextView(this);
+        darkModeLabel.setText("Theme:");
+        darkModeLabel.setPadding(0, 30, 0, 10);
+        layout.addView(darkModeLabel);
+        
+        Button btnDarkMode = new Button(this);
+        SharedPreferences themePrefs = getSharedPreferences("GitCodeTheme", MODE_PRIVATE);
+        boolean isDark = themePrefs.getBoolean("darkMode", false);
+        btnDarkMode.setText(isDark ? "☀ Switch to Light Mode" : "🌙 Switch to Dark Mode");
+        btnDarkMode.setOnClickListener(v -> {
+            boolean currentDark = themePrefs.getBoolean("darkMode", false);
+            themePrefs.edit().putBoolean("darkMode", !currentDark).apply();
+            recreate();
+        });
+        layout.addView(btnDarkMode);
         
         builder.setView(layout);
         builder.setPositiveButton("Save", (d, w) -> {
