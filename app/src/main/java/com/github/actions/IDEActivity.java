@@ -223,6 +223,7 @@ public class IDEActivity extends AppCompatActivity {
             private String before = "";
             private int cursorPos = 0;
             private boolean isProcessing = false;
+            private long lastUpdateTime = 0;
             
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
                 before = s.toString();
@@ -236,17 +237,27 @@ public class IDEActivity extends AppCompatActivity {
                 isProcessing = true;
                 
                 String text = s.toString();
+                long currentTime = System.currentTimeMillis();
                 
                 // Skip heavy operations for large files
-                boolean isLargeFile = text.length() > 100000;
+                boolean isLargeFile = text.length() > 50000;
                 
                 if (!isLargeFile) {
-                    // Update line numbers
-                    updateLineNumbers(lineNumbers, text);
+                    // Update line numbers only every 100ms to reduce lag
+                    if (currentTime - lastUpdateTime > 100) {
+                        updateLineNumbers(lineNumbers, text);
+                        lastUpdateTime = currentTime;
+                    }
                     
                     // Trigger syntax highlighting after 2 seconds of inactivity
                     syntaxHandler.removeCallbacks(syntaxRunnable);
                     syntaxHandler.postDelayed(syntaxRunnable, 2000);
+                } else {
+                    // For large files, update line numbers only every 500ms
+                    if (currentTime - lastUpdateTime > 500) {
+                        lineNumbers.post(() -> updateLineNumbers(lineNumbers, text));
+                        lastUpdateTime = currentTime;
+                    }
                 }
                 
                 // Always trigger auto-save
@@ -734,6 +745,7 @@ public class IDEActivity extends AppCompatActivity {
     private java.util.List<Integer> findOccurrences = new java.util.ArrayList<>();
     private String lastSearchText = "";
     private String lastReplaceText = "";
+    private boolean isLargeFile = false;
     
     private void showFindDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -1411,11 +1423,11 @@ public class IDEActivity extends AppCompatActivity {
             }
             
             long fileSize = file.length();
-            boolean isLargeFile = fileSize > 100000; // 100KB threshold
+            isLargeFile = fileSize > 50000; // 50KB threshold
             
             if (isLargeFile) {
                 // Show loading message
-                editor.setText("Loading...");
+                editor.setText("Loading large file...");
                 editor.setEnabled(false);
                 
                 // Load large file asynchronously
@@ -1433,11 +1445,14 @@ public class IDEActivity extends AppCompatActivity {
                             undoStack.clear();
                             redoStack.clear();
                             
+                            // Disable text watcher temporarily
                             editor.setText(content);
                             editor.setEnabled(true);
                             
-                            // Skip syntax highlighting for large files
-                            Toast.makeText(this, "Large file - syntax highlighting disabled", Toast.LENGTH_SHORT).show();
+                            // Update line numbers once
+                            updateLineNumbers(lineNumbers, content);
+                            
+                            Toast.makeText(this, "Large file - real-time syntax highlighting disabled for performance", Toast.LENGTH_LONG).show();
                             
                             saveFileState(file);
                             updateTabsAndUI(file);
