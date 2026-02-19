@@ -48,22 +48,25 @@ public class ProjectsActivity extends AppCompatActivity {
         }
         
         TextView title = new TextView(this);
-        android.text.SpannableString content = new android.text.SpannableString("GitCode");
-        content.setSpan(new android.text.style.UnderlineSpan(), 0, content.length(), 0);
-        content.setSpan(new android.text.style.ForegroundColorSpan(0xFF4CAF50), 0, content.length(), 0);
-        title.setText(content);
+        title.setText("GitCode");
         title.setTextSize(32);
-        title.setPadding(0, 20, 0, 40);
+        title.setTextColor(0xFF4CAF50);
+        title.setPadding(0, 20, 0, 5);
+        mainLayout.addView(title);
         
-        // Add separate underline view with proper color
         View underline = new View(this);
         underline.setLayoutParams(new LinearLayout.LayoutParams(
             (int)(200 * getResources().getDisplayMetrics().density),
             (int)(2 * getResources().getDisplayMetrics().density)));
         underline.setBackgroundColor(isDark ? 0xFFFFFFFF : 0xFF000000);
-        
-        mainLayout.addView(title);
         mainLayout.addView(underline);
+        
+        // Spacer
+        View spacer = new View(this);
+        spacer.setLayoutParams(new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            (int)(35 * getResources().getDisplayMetrics().density)));
+        mainLayout.addView(spacer);
         
         Button btnNew = new Button(this);
         btnNew.setText("+ New Project");
