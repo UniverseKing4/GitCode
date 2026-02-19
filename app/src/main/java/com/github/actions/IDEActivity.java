@@ -1442,17 +1442,13 @@ public class IDEActivity extends AppCompatActivity {
                 fullFileContent = content;
                 currentChunkStart = 0;
                 
-                // Load only first chunk
-                String chunk = getChunk(0);
-                editor.setText(chunk);
-                editor.setEnabled(true);
+                // Load first chunk
+                loadChunkAtPosition(0);
                 
-                // Show navigation info
-                int totalChunks = (fullFileContent.length() + CHUNK_SIZE - 1) / CHUNK_SIZE;
-                Toast.makeText(this, "Large file - showing part 1/" + totalChunks + " (swipe to navigate)", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Large file - dynamic loading enabled", Toast.LENGTH_SHORT).show();
                 
-                // Add swipe gesture for navigation
-                setupChunkNavigation();
+                // Setup scroll-based dynamic loading
+                setupDynamicChunkLoading();
             } else {
                 fullFileContent = "";
                 editor.setText(content);
@@ -1467,66 +1463,69 @@ public class IDEActivity extends AppCompatActivity {
         }
     }
     
-    private String getChunk(int startPos) {
-        if (fullFileContent.isEmpty()) return "";
-        int end = Math.min(startPos + CHUNK_SIZE, fullFileContent.length());
-        return fullFileContent.substring(startPos, end);
+    private void loadChunkAtPosition(int position) {
+        if (fullFileContent.isEmpty()) return;
+        
+        // Calculate chunk boundaries
+        currentChunkStart = (position / CHUNK_SIZE) * CHUNK_SIZE;
+        int end = Math.min(currentChunkStart + CHUNK_SIZE, fullFileContent.length());
+        
+        String chunk = fullFileContent.substring(currentChunkStart, end);
+        
+        // Save cursor position relative to chunk
+        int cursorPos = editor.getSelectionStart();
+        
+        editor.setText(chunk);
+        editor.setEnabled(true);
+        
+        // Restore cursor if within chunk
+        if (cursorPos >= 0 && cursorPos < chunk.length()) {
+            editor.setSelection(Math.min(cursorPos, chunk.length()));
+        }
     }
     
-    private void setupChunkNavigation() {
-        // Remove existing listener
-        editor.setOnTouchListener(null);
-        
-        // Add gesture detector for swipe
-        final android.view.GestureDetector gestureDetector = new android.view.GestureDetector(this,
-            new android.view.GestureDetector.SimpleOnGestureListener() {
-                @Override
-                public boolean onFling(android.view.MotionEvent e1, android.view.MotionEvent e2, float velocityX, float velocityY) {
-                    if (!isLargeFile) return false;
-                    
-                    float diffY = e2.getY() - e1.getY();
-                    if (Math.abs(diffY) > 100 && Math.abs(velocityY) > 100) {
-                        if (diffY > 0) {
-                            // Swipe down - previous chunk
-                            loadPreviousChunk();
-                        } else {
-                            // Swipe up - next chunk
-                            loadNextChunk();
-                        }
-                        return true;
+    private void setupDynamicChunkLoading() {
+        editorScroll.getViewTreeObserver().addOnScrollChangedListener(new android.view.ViewTreeObserver.OnScrollChangedListener() {
+            private int lastScrollY = 0;
+            
+            @Override
+            public void onScrollChanged() {
+                if (!isLargeFile || fullFileContent.isEmpty()) return;
+                
+                int scrollY = editorScroll.getScrollY();
+                int height = editorScroll.getHeight();
+                int contentHeight = editor.getHeight();
+                
+                // Check if scrolled near bottom (load next chunk)
+                if (scrollY + height >= contentHeight - 100) {
+                    int nextChunkStart = currentChunkStart + CHUNK_SIZE;
+                    if (nextChunkStart < fullFileContent.length()) {
+                        // Save current edits before switching
+                        updateFullContentFromChunk();
+                        loadChunkAtPosition(nextChunkStart);
                     }
-                    return false;
                 }
-            });
-        
-        editor.setOnTouchListener((v, event) -> {
-            gestureDetector.onTouchEvent(event);
-            return false;
+                // Check if scrolled near top (load previous chunk)
+                else if (scrollY < 100 && currentChunkStart > 0) {
+                    // Save current edits before switching
+                    updateFullContentFromChunk();
+                    int prevChunkStart = Math.max(0, currentChunkStart - CHUNK_SIZE);
+                    loadChunkAtPosition(prevChunkStart);
+                }
+                
+                lastScrollY = scrollY;
+            }
         });
     }
     
-    private void loadNextChunk() {
-        if (currentChunkStart + CHUNK_SIZE < fullFileContent.length()) {
-            currentChunkStart += CHUNK_SIZE;
-            String chunk = getChunk(currentChunkStart);
-            editor.setText(chunk);
-            
-            int currentPart = (currentChunkStart / CHUNK_SIZE) + 1;
-            int totalChunks = (fullFileContent.length() + CHUNK_SIZE - 1) / CHUNK_SIZE;
-            Toast.makeText(this, "Part " + currentPart + "/" + totalChunks, Toast.LENGTH_SHORT).show();
-        }
-    }
-    
-    private void loadPreviousChunk() {
-        if (currentChunkStart > 0) {
-            currentChunkStart = Math.max(0, currentChunkStart - CHUNK_SIZE);
-            String chunk = getChunk(currentChunkStart);
-            editor.setText(chunk);
-            
-            int currentPart = (currentChunkStart / CHUNK_SIZE) + 1;
-            int totalChunks = (fullFileContent.length() + CHUNK_SIZE - 1) / CHUNK_SIZE;
-            Toast.makeText(this, "Part " + currentPart + "/" + totalChunks, Toast.LENGTH_SHORT).show();
-        }
+    private void updateFullContentFromChunk() {
+        if (!isLargeFile || fullFileContent.isEmpty()) return;
+        
+        String currentChunk = editor.getText().toString();
+        String before = currentChunkStart > 0 ? fullFileContent.substring(0, currentChunkStart) : "";
+        int chunkEnd = Math.min(currentChunkStart + CHUNK_SIZE, fullFileContent.length());
+        String after = chunkEnd < fullFileContent.length() ? fullFileContent.substring(chunkEnd) : "";
+        fullFileContent = before + currentChunk + after;
     }
     
     private void saveFileState(File file) {
@@ -1894,12 +1893,8 @@ public class IDEActivity extends AppCompatActivity {
         try {
             FileOutputStream fos = new FileOutputStream(currentFile);
             if (isLargeFile && !fullFileContent.isEmpty()) {
-                // For large files, update the chunk in full content and save all
-                String currentChunk = editor.getText().toString();
-                String before = fullFileContent.substring(0, currentChunkStart);
-                int chunkEnd = Math.min(currentChunkStart + CHUNK_SIZE, fullFileContent.length());
-                String after = chunkEnd < fullFileContent.length() ? fullFileContent.substring(chunkEnd) : "";
-                fullFileContent = before + currentChunk + after;
+                // Update full content from current chunk first
+                updateFullContentFromChunk();
                 fos.write(fullFileContent.getBytes());
             } else {
                 fos.write(editor.getText().toString().getBytes());
