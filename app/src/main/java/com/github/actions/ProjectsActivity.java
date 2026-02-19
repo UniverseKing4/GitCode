@@ -189,71 +189,29 @@ public class ProjectsActivity extends AppCompatActivity {
         
         String[] projectArray = projects.split(";");
         StringBuilder validProjects = new StringBuilder();
-        File gitCodeDir = new File(Environment.getExternalStorageDirectory(), "GitCode");
-        
-        // Build a map of all folders in GitCode directory
-        java.util.Map<String, File> allFolders = new java.util.HashMap<>();
-        if (gitCodeDir.exists() && gitCodeDir.isDirectory()) {
-            File[] folders = gitCodeDir.listFiles();
-            if (folders != null) {
-                for (File folder : folders) {
-                    if (folder.isDirectory()) {
-                        allFolders.put(folder.getName(), folder);
-                    }
-                }
-            }
-        }
         
         for (String project : projectArray) {
             if (project.isEmpty()) continue;
             String[] parts = project.split("\\|");
             if (parts.length != 2) continue;
             
-            String savedName = parts[0];
-            String savedPath = parts[1];
+            String name = parts[0];
+            String path = parts[1];
             
-            File dir = new File(savedPath);
-            
-            // If exact path doesn't exist
-            if (!dir.exists()) {
-                // Try to find by saved name in GitCode directory
-                if (allFolders.containsKey(savedName)) {
-                    dir = allFolders.get(savedName);
-                } else {
-                    // Check if parent directory exists and has a different folder
-                    File parentDir = new File(savedPath).getParentFile();
-                    if (parentDir != null && parentDir.exists()) {
-                        File[] siblings = parentDir.listFiles();
-                        if (siblings != null && siblings.length > 0) {
-                            // If there's a folder in the same parent, assume it's renamed
-                            for (File sibling : siblings) {
-                                if (sibling.isDirectory()) {
-                                    dir = sibling;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Skip if still not found
+            File dir = new File(path);
             if (!dir.exists()) continue;
             
-            String actualName = dir.getName();
-            String actualPath = dir.getAbsolutePath();
-            
-            validProjects.append(actualName).append("|").append(actualPath).append(";");
+            validProjects.append(name).append("|").append(path).append(";");
             
             LinearLayout projectItem = new LinearLayout(this);
             projectItem.setOrientation(LinearLayout.HORIZONTAL);
             projectItem.setPadding(0, 5, 0, 5);
             
             Button btn = new Button(this);
-            btn.setText("📁 " + actualName);
+            btn.setText("📁 " + name);
             btn.setTransformationMethod(null); // Prevent auto-capitalization
             btn.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-            btn.setOnClickListener(v -> openProject(actualName, actualPath));
+            btn.setOnClickListener(v -> openProject(name, path));
             projectItem.addView(btn);
             
             Button btnEdit = new Button(this);
@@ -262,7 +220,7 @@ public class ProjectsActivity extends AppCompatActivity {
             btnEdit.setMinWidth(0);
             btnEdit.setMinimumWidth(0);
             btnEdit.setPadding(20, 0, 20, 0);
-            btnEdit.setOnClickListener(v -> editProject(actualName, actualPath));
+            btnEdit.setOnClickListener(v -> editProject(name, path));
             projectItem.addView(btnEdit);
             
             Button btnDelete = new Button(this);
@@ -271,7 +229,7 @@ public class ProjectsActivity extends AppCompatActivity {
             btnDelete.setMinWidth(0);
             btnDelete.setMinimumWidth(0);
             btnDelete.setPadding(20, 0, 20, 0);
-            btnDelete.setOnClickListener(v -> deleteProject(actualName, actualPath));
+            btnDelete.setOnClickListener(v -> deleteProject(name, path));
             projectItem.addView(btnDelete);
             
             projectsList.addView(projectItem);
