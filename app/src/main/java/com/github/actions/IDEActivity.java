@@ -1445,9 +1445,6 @@ public class IDEActivity extends AppCompatActivity {
                 // Load first chunk
                 loadChunkWithButtons(0);
                 
-                // Update line numbers for full file
-                updateLineNumbersForLargeFile();
-                
                 Toast.makeText(this, "Large file - use Load buttons to navigate", Toast.LENGTH_SHORT).show();
             } else {
                 fullFileContent = "";
@@ -1470,11 +1467,14 @@ public class IDEActivity extends AppCompatActivity {
         currentChunkStart = (position / CHUNK_SIZE) * CHUNK_SIZE;
         int end = Math.min(currentChunkStart + CHUNK_SIZE, fullFileContent.length());
         
+        int currentPart = (currentChunkStart / CHUNK_SIZE) + 1;
+        int totalParts = (fullFileContent.length() + CHUNK_SIZE - 1) / CHUNK_SIZE;
+        
         StringBuilder displayText = new StringBuilder();
         
         // Add "Load Previous" button at top if not first chunk
         if (currentChunkStart > 0) {
-            displayText.append("▲▲▲ TAP TO LOAD PREVIOUS ▲▲▲\n\n");
+            displayText.append("▲▲▲ TAP TO LOAD PREVIOUS (").append(currentPart - 1).append("/").append(totalParts).append(") ▲▲▲\n\n");
         }
         
         // Add chunk content
@@ -1483,14 +1483,60 @@ public class IDEActivity extends AppCompatActivity {
         
         // Add "Load Next" button at bottom if not last chunk
         if (end < fullFileContent.length()) {
-            displayText.append("\n\n▼▼▼ TAP TO LOAD NEXT ▼▼▼");
+            displayText.append("\n\n▼▼▼ TAP TO LOAD NEXT (").append(currentPart + 1).append("/").append(totalParts).append(") ▼▼▼");
         }
         
         editor.setText(displayText.toString());
         editor.setEnabled(true);
         
+        // Update line numbers for current chunk
+        updateLineNumbersForChunk(chunk, currentChunkStart);
+        
         // Setup click listener for load buttons
         setupLoadButtonClicks();
+    }
+    
+    private void updateLineNumbersForChunk(String chunk, int startPos) {
+        executor.execute(() -> {
+            // Count lines before this chunk
+            String beforeChunk = startPos > 0 ? fullFileContent.substring(0, startPos) : "";
+            int startLineNumber = beforeChunk.isEmpty() ? 1 : beforeChunk.split("\n", -1).length;
+            
+            // Count lines in current chunk
+            String[] lines = chunk.split("\n", -1);
+            int lineCount = lines.length;
+            
+            StringBuilder sb = new StringBuilder();
+            
+            // Add empty lines for "Load Previous" button if present
+            if (startPos > 0) {
+                sb.append("\n\n");
+            }
+            
+            // Add line numbers starting from correct position
+            for (int i = 0; i < lineCount; i++) {
+                sb.append(startLineNumber + i);
+                if (i < lineCount - 1) sb.append("\n");
+            }
+            
+            // Add empty lines for "Load Next" button if present
+            if (startPos + CHUNK_SIZE < fullFileContent.length()) {
+                sb.append("\n\n");
+            }
+            
+            String lineNumberText = sb.toString();
+            
+            runOnUiThread(() -> {
+                lineNumbers.setText(lineNumberText);
+                lineNumbers.post(() -> {
+                    lineNumbers.measure(0, 0);
+                    int measuredWidth = lineNumbers.getMeasuredWidth();
+                    int perfectWidth = measuredWidth + (int)(4 * getResources().getDisplayMetrics().density);
+                    lineNumberScroll.getLayoutParams().width = perfectWidth;
+                    lineNumberScroll.requestLayout();
+                });
+            });
+        });
     }
     
     private void setupLoadButtonClicks() {
@@ -1520,26 +1566,6 @@ public class IDEActivity extends AppCompatActivity {
     private void updateLineNumbersForLargeFile() {
         executor.execute(() -> {
             String[] lines = fullFileContent.split("\n", -1);
-            int lineCount = lines.length;
-            StringBuilder sb = new StringBuilder();
-            for (int i = 1; i <= lineCount; i++) {
-                sb.append(i);
-                if (i < lineCount) sb.append("\n");
-            }
-            String lineNumberText = sb.toString();
-            
-            runOnUiThread(() -> {
-                lineNumbers.setText(lineNumberText);
-                lineNumbers.post(() -> {
-                    lineNumbers.measure(0, 0);
-                    int measuredWidth = lineNumbers.getMeasuredWidth();
-                    int perfectWidth = measuredWidth + (int)(4 * getResources().getDisplayMetrics().density);
-                    lineNumberScroll.getLayoutParams().width = perfectWidth;
-                    lineNumberScroll.requestLayout();
-                });
-            });
-        });
-    }
     
     private void updateFullContentFromChunk() {
         if (!isLargeFile || fullFileContent.isEmpty()) return;
