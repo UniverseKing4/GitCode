@@ -410,19 +410,28 @@ public class ProjectsActivity extends AppCompatActivity {
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(50, 20, 50, 20);
         
-        EditText etRepo = new EditText(this);
-        etRepo.setHint("Repository name");
-        layout.addView(etRepo);
+        EditText etUrl = new EditText(this);
+        etUrl.setHint("Repository URL (e.g., https://github.com/user/repo)");
+        layout.addView(etUrl);
         
         builder.setView(layout);
         builder.setPositiveButton("Clone", (d, w) -> {
-            String repo = etRepo.getText().toString().trim();
-            if (repo.isEmpty()) {
-                Toast.makeText(this, "Enter repository name", Toast.LENGTH_SHORT).show();
+            String url = etUrl.getText().toString().trim();
+            if (url.isEmpty()) {
+                Toast.makeText(this, "Enter repository URL", Toast.LENGTH_SHORT).show();
                 return;
             }
             
-            cloneRepoFromGitHub(username, token, repo);
+            // Parse URL to get username and repo
+            String[] parts = url.replace("https://github.com/", "").replace(".git", "").split("/");
+            if (parts.length != 2) {
+                Toast.makeText(this, "Invalid GitHub URL", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            String repoOwner = parts[0];
+            String repoName = parts[1];
+            cloneRepoFromGitHub(repoOwner, token, repoName);
         });
         builder.setNegativeButton("Cancel", null);
         builder.show();
@@ -459,10 +468,32 @@ public class ProjectsActivity extends AppCompatActivity {
             }
             
             dir.mkdirs();
+            
+            // Pull all files from repo
+            java.util.List<String> files = api.getRepoTree();
+            int cloned = 0;
+            
+            for (String filePath : files) {
+                String content = api.pullFile(filePath);
+                if (content != null) {
+                    File file = new File(path, filePath);
+                    file.getParentFile().mkdirs();
+                    try {
+                        java.io.FileOutputStream fos = new java.io.FileOutputStream(file);
+                        fos.write(content.getBytes());
+                        fos.close();
+                        cloned++;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            
             saveProject(repo, path);
             
+            int finalCloned = cloned;
             runOnUiThread(() -> {
-                Toast.makeText(this, "✓ Repository cloned", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "✓ Cloned " + finalCloned + " files", Toast.LENGTH_SHORT).show();
                 loadProjects();
                 openProject(repo, path);
             });

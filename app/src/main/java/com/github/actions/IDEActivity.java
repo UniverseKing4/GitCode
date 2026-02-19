@@ -1610,14 +1610,32 @@ public class IDEActivity extends AppCompatActivity {
                 return;
             }
             
-            // Pull all files
-            int pulled = pullAllFiles(api, new File(projectPath), "");
+            // Get all files from repo
+            java.util.List<String> files = api.getRepoTree();
+            int pulled = 0;
             
+            for (String filePath : files) {
+                String content = api.pullFile(filePath);
+                if (content != null) {
+                    File file = new File(projectPath, filePath);
+                    file.getParentFile().mkdirs();
+                    try {
+                        java.io.FileOutputStream fos = new java.io.FileOutputStream(file);
+                        fos.write(content.getBytes());
+                        fos.close();
+                        pulled++;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            
+            int finalPulled = pulled;
             runOnUiThread(() -> {
-                if (pulled > 0) {
-                    Toast.makeText(this, "✓ Pulled " + pulled + " files", Toast.LENGTH_LONG).show();
+                if (finalPulled > 0) {
+                    Toast.makeText(this, "✓ Pulled " + finalPulled + " files", Toast.LENGTH_LONG).show();
                     loadFiles();
-                    if (currentFile != null) {
+                    if (currentFile != null && currentFile.exists()) {
                         openFile(currentFile);
                     }
                 } else {
