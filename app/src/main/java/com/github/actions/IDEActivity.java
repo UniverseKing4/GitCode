@@ -422,7 +422,6 @@ public class IDEActivity extends AppCompatActivity {
             addCompactButton(toolbarView, "💾", v -> saveCurrentFile());
             addCompactButton(toolbarView, "↶", v -> undo());
             addCompactButton(toolbarView, "↷", v -> redo());
-            addCompactButton(toolbarView, "⬇", v -> pullFromGitHub());
             addCompactButton(toolbarView, "🚀", v -> commitAndPushAll());
             
             getSupportActionBar().setCustomView(toolbarView);
@@ -441,6 +440,7 @@ public class IDEActivity extends AppCompatActivity {
         menu.add(0, 5, 0, "Duplicate Line");
         menu.add(0, 6, 0, "Delete Line");
         menu.add(0, 7, 0, "Word Wrap: ON");
+        menu.add(0, 8, 0, "⬇ Pull from GitHub");
         return true;
     }
 
@@ -474,6 +474,9 @@ public class IDEActivity extends AppCompatActivity {
                 return true;
             case 7:
                 toggleWordWrap(item);
+                return true;
+            case 8:
+                pullFromGitHub();
                 return true;
         }
         return super.onOptionsItemSelected(item);
