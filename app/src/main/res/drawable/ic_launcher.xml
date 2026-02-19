@@ -8,14 +8,14 @@
         android:pathData="M0,0h48v48h-48z"/>
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M12,15h24v3h-24z"/>
+        android:pathData="M16,19h16v2h-16z"/>
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M12,21h18v3h-18z"/>
+        android:pathData="M16,23h12v2h-12z"/>
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M12,27h21v3h-21z"/>
+        android:pathData="M16,27h14v2h-14z"/>
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M32,24l5,5l-5,5z"/>
+        android:pathData="M29,23l4,4l-4,4z"/>
 </vector>
