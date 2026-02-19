@@ -237,16 +237,21 @@ public class IDEActivity extends AppCompatActivity {
                 
                 String text = s.toString();
                 
-                // Update line numbers
-                updateLineNumbers(lineNumbers, text);
+                // Skip heavy operations for large files
+                boolean isLargeFile = text.length() > 100000;
                 
-                // Trigger auto-save after 2 seconds of inactivity
+                if (!isLargeFile) {
+                    // Update line numbers
+                    updateLineNumbers(lineNumbers, text);
+                    
+                    // Trigger syntax highlighting after 2 seconds of inactivity
+                    syntaxHandler.removeCallbacks(syntaxRunnable);
+                    syntaxHandler.postDelayed(syntaxRunnable, 2000);
+                }
+                
+                // Always trigger auto-save
                 autoSaveHandler.removeCallbacks(autoSaveRunnable);
                 autoSaveHandler.postDelayed(autoSaveRunnable, 2000);
-                
-                // Trigger syntax highlighting after 2 seconds of inactivity
-                syntaxHandler.removeCallbacks(syntaxRunnable);
-                syntaxHandler.postDelayed(syntaxRunnable, 2000);
                 
                 // Track for undo/redo with time-based grouping
                 if (!isUndoRedo && !text.equals(before)) {
@@ -1405,40 +1410,88 @@ public class IDEActivity extends AppCompatActivity {
                 autoSaveFile();
             }
             
-            FileInputStream fis = new FileInputStream(file);
-            byte[] data = new byte[(int) file.length()];
-            fis.read(data);
-            fis.close();
+            long fileSize = file.length();
+            boolean isLargeFile = fileSize > 100000; // 100KB threshold
             
-            currentFile = file;
-            String content = new String(data);
-            
-            undoStack.clear();
-            redoStack.clear();
-            
-            editor.setText(content);
-            editor.setEnabled(true);
-            applySyntaxHighlighting(file.getName(), content);
-            
-            // Save as last opened file
-            SharedPreferences filePrefs = getSharedPreferences("GitCodeFiles", MODE_PRIVATE);
-            filePrefs.edit().putString("lastFile_" + projectName, file.getAbsolutePath()).apply();
-            
-            // Add to tabs if not already open
-            if (!openTabs.contains(file)) {
-                openTabs.add(file);
-                updateTabBar();
+            if (isLargeFile) {
+                // Show loading message
+                editor.setText("Loading...");
+                editor.setEnabled(false);
+                
+                // Load large file asynchronously
+                executor.execute(() -> {
+                    try {
+                        FileInputStream fis = new FileInputStream(file);
+                        byte[] data = new byte[(int) fileSize];
+                        fis.read(data);
+                        fis.close();
+                        
+                        String content = new String(data);
+                        
+                        runOnUiThread(() -> {
+                            currentFile = file;
+                            undoStack.clear();
+                            redoStack.clear();
+                            
+                            editor.setText(content);
+                            editor.setEnabled(true);
+                            
+                            // Skip syntax highlighting for large files
+                            Toast.makeText(this, "Large file - syntax highlighting disabled", Toast.LENGTH_SHORT).show();
+                            
+                            saveFileState(file);
+                            updateTabsAndUI(file);
+                        });
+                    } catch (Exception e) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            editor.setEnabled(true);
+                        });
+                    }
+                });
             } else {
-                highlightActiveTab(file);
+                // Load small file normally
+                FileInputStream fis = new FileInputStream(file);
+                byte[] data = new byte[(int) fileSize];
+                fis.read(data);
+                fis.close();
+                
+                currentFile = file;
+                String content = new String(data);
+                
+                undoStack.clear();
+                redoStack.clear();
+                
+                editor.setText(content);
+                editor.setEnabled(true);
+                applySyntaxHighlighting(file.getName(), content);
+                
+                saveFileState(file);
+                updateTabsAndUI(file);
             }
-            
-            if (getSupportActionBar() != null) {
-                getSupportActionBar().setSubtitle(file.getName());
-            }
-            drawerLayout.closeDrawer(Gravity.START);
         } catch (Exception e) {
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+    
+    private void saveFileState(File file) {
+        SharedPreferences filePrefs = getSharedPreferences("GitCodeFiles", MODE_PRIVATE);
+        filePrefs.edit().putString("lastFile_" + projectName, file.getAbsolutePath()).apply();
+    }
+    
+    private void updateTabsAndUI(File file) {
+        // Add to tabs if not already open
+        if (!openTabs.contains(file)) {
+            openTabs.add(file);
+            updateTabBar();
+        } else {
+            highlightActiveTab(file);
+        }
+        
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setSubtitle(file.getName());
+        }
+        drawerLayout.closeDrawer(Gravity.START);
     }
 
     private void updateTabBar() {
