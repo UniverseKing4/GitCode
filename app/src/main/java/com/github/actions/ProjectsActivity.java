@@ -20,14 +20,12 @@ public class ProjectsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        
-        // Apply dark mode
+        // Apply theme BEFORE super.onCreate for splash screen
         SharedPreferences themePrefs = getSharedPreferences("GitCodeTheme", MODE_PRIVATE);
         boolean isDark = themePrefs.getBoolean("darkMode", true);
-        
-        // Set theme before setContentView
         setTheme(isDark ? R.style.AppTheme_Dark : R.style.AppTheme);
+        
+        super.onCreate(savedInstanceState);
         
         // Dark navigation bar
         if (isDark && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
