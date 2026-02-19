@@ -413,14 +413,14 @@ public class IDEActivity extends AppCompatActivity {
         btnContainer.setId(View.generateViewId());
         
         android.widget.Button btnNewFile = new android.widget.Button(this);
-        btnNewFile.setText("File");
+        btnNewFile.setText("+ File");
         btnNewFile.setTextSize(12);
         btnNewFile.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         btnNewFile.setOnClickListener(v -> createNewFile());
         btnContainer.addView(btnNewFile);
         
         android.widget.Button btnNewFolder = new android.widget.Button(this);
-        btnNewFolder.setText("Folder");
+        btnNewFolder.setText("+ Folder");
         btnNewFolder.setTextSize(12);
         btnNewFolder.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         btnNewFolder.setOnClickListener(v -> createNewFolder());
