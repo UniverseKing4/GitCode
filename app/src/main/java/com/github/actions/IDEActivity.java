@@ -1443,12 +1443,12 @@ public class IDEActivity extends AppCompatActivity {
                 currentChunkStart = 0;
                 
                 // Load first chunk
-                loadChunkAtPosition(0);
+                loadChunkWithButtons(0);
                 
-                Toast.makeText(this, "Large file - dynamic loading enabled", Toast.LENGTH_SHORT).show();
+                // Update line numbers for full file
+                updateLineNumbersForLargeFile();
                 
-                // Setup scroll-based dynamic loading
-                setupDynamicChunkLoading();
+                Toast.makeText(this, "Large file - use Load buttons to navigate", Toast.LENGTH_SHORT).show();
             } else {
                 fullFileContent = "";
                 editor.setText(content);
@@ -1463,69 +1463,97 @@ public class IDEActivity extends AppCompatActivity {
         }
     }
     
-    private void loadChunkAtPosition(int position) {
+    private void loadChunkWithButtons(int position) {
         if (fullFileContent.isEmpty()) return;
         
         // Calculate chunk boundaries
         currentChunkStart = (position / CHUNK_SIZE) * CHUNK_SIZE;
         int end = Math.min(currentChunkStart + CHUNK_SIZE, fullFileContent.length());
         
+        StringBuilder displayText = new StringBuilder();
+        
+        // Add "Load Previous" button at top if not first chunk
+        if (currentChunkStart > 0) {
+            displayText.append("▲▲▲ TAP TO LOAD PREVIOUS ▲▲▲\n\n");
+        }
+        
+        // Add chunk content
         String chunk = fullFileContent.substring(currentChunkStart, end);
+        displayText.append(chunk);
         
-        // Save cursor position relative to chunk
-        int cursorPos = editor.getSelectionStart();
+        // Add "Load Next" button at bottom if not last chunk
+        if (end < fullFileContent.length()) {
+            displayText.append("\n\n▼▼▼ TAP TO LOAD NEXT ▼▼▼");
+        }
         
-        editor.setText(chunk);
+        editor.setText(displayText.toString());
         editor.setEnabled(true);
         
-        // Restore cursor if within chunk
-        if (cursorPos >= 0 && cursorPos < chunk.length()) {
-            editor.setSelection(Math.min(cursorPos, chunk.length()));
-        }
+        // Setup click listener for load buttons
+        setupLoadButtonClicks();
     }
     
-    private void setupDynamicChunkLoading() {
-        editorScroll.getViewTreeObserver().addOnScrollChangedListener(new android.view.ViewTreeObserver.OnScrollChangedListener() {
-            private int lastScrollY = 0;
+    private void setupLoadButtonClicks() {
+        editor.setOnClickListener(v -> {
+            if (!isLargeFile) return;
             
-            @Override
-            public void onScrollChanged() {
-                if (!isLargeFile || fullFileContent.isEmpty()) return;
-                
-                int scrollY = editorScroll.getScrollY();
-                int height = editorScroll.getHeight();
-                int contentHeight = editor.getHeight();
-                
-                // Check if scrolled near bottom (load next chunk)
-                if (scrollY + height >= contentHeight - 100) {
-                    int nextChunkStart = currentChunkStart + CHUNK_SIZE;
-                    if (nextChunkStart < fullFileContent.length()) {
-                        // Save current edits before switching
-                        updateFullContentFromChunk();
-                        loadChunkAtPosition(nextChunkStart);
-                    }
-                }
-                // Check if scrolled near top (load previous chunk)
-                else if (scrollY < 100 && currentChunkStart > 0) {
-                    // Save current edits before switching
-                    updateFullContentFromChunk();
-                    int prevChunkStart = Math.max(0, currentChunkStart - CHUNK_SIZE);
-                    loadChunkAtPosition(prevChunkStart);
-                }
-                
-                lastScrollY = scrollY;
+            String text = editor.getText().toString();
+            int cursorPos = editor.getSelectionStart();
+            
+            // Check if clicked on "Load Previous" button (first 50 chars)
+            if (cursorPos < 50 && text.startsWith("▲▲▲")) {
+                updateFullContentFromChunk();
+                int prevChunkStart = Math.max(0, currentChunkStart - CHUNK_SIZE);
+                loadChunkWithButtons(prevChunkStart);
             }
+            // Check if clicked on "Load Next" button (last 50 chars)
+            else if (cursorPos > text.length() - 50 && text.endsWith("▼▼▼")) {
+                updateFullContentFromChunk();
+                int nextChunkStart = currentChunkStart + CHUNK_SIZE;
+                if (nextChunkStart < fullFileContent.length()) {
+                    loadChunkWithButtons(nextChunkStart);
+                }
+            }
+        });
+    }
+    
+    private void updateLineNumbersForLargeFile() {
+        executor.execute(() -> {
+            String[] lines = fullFileContent.split("\n", -1);
+            int lineCount = lines.length;
+            StringBuilder sb = new StringBuilder();
+            for (int i = 1; i <= lineCount; i++) {
+                sb.append(i);
+                if (i < lineCount) sb.append("\n");
+            }
+            String lineNumberText = sb.toString();
+            
+            runOnUiThread(() -> {
+                lineNumbers.setText(lineNumberText);
+                lineNumbers.post(() -> {
+                    lineNumbers.measure(0, 0);
+                    int measuredWidth = lineNumbers.getMeasuredWidth();
+                    int perfectWidth = measuredWidth + (int)(4 * getResources().getDisplayMetrics().density);
+                    lineNumberScroll.getLayoutParams().width = perfectWidth;
+                    lineNumberScroll.requestLayout();
+                });
+            });
         });
     }
     
     private void updateFullContentFromChunk() {
         if (!isLargeFile || fullFileContent.isEmpty()) return;
         
-        String currentChunk = editor.getText().toString();
+        String currentText = editor.getText().toString();
+        
+        // Remove load buttons from text
+        currentText = currentText.replaceFirst("^▲▲▲ TAP TO LOAD PREVIOUS ▲▲▲\\n\\n", "");
+        currentText = currentText.replaceFirst("\\n\\n▼▼▼ TAP TO LOAD NEXT ▼▼▼$", "");
+        
         String before = currentChunkStart > 0 ? fullFileContent.substring(0, currentChunkStart) : "";
         int chunkEnd = Math.min(currentChunkStart + CHUNK_SIZE, fullFileContent.length());
         String after = chunkEnd < fullFileContent.length() ? fullFileContent.substring(chunkEnd) : "";
-        fullFileContent = before + currentChunk + after;
+        fullFileContent = before + currentText + after;
     }
     
     private void saveFileState(File file) {
