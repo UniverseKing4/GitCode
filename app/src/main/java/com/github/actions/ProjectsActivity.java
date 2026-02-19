@@ -26,6 +26,9 @@ public class ProjectsActivity extends AppCompatActivity {
         SharedPreferences themePrefs = getSharedPreferences("GitCodeTheme", MODE_PRIVATE);
         boolean isDark = themePrefs.getBoolean("darkMode", true);
         
+        // Set theme before setContentView
+        setTheme(isDark ? R.style.AppTheme_Dark : R.style.AppTheme);
+        
         // Dark navigation bar
         if (isDark && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             getWindow().setNavigationBarColor(0xFF000000);
@@ -50,6 +53,7 @@ public class ProjectsActivity extends AppCompatActivity {
         title.setTextSize(32);
         title.setTextColor(0xFF4CAF50);
         title.setPadding(0, 20, 0, 40);
+        title.setPaintFlags(title.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
         mainLayout.addView(title);
         
         Button btnNew = new Button(this);
