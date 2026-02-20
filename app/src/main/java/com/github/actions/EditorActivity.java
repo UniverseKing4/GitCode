@@ -67,7 +67,7 @@ public class EditorActivity extends AppCompatActivity {
     }
 
     private void newFile() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        AlertDialog.Builder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("New File");
         EditText input = new EditText(this);
         input.setHint("filename.ext");
@@ -104,7 +104,7 @@ public class EditorActivity extends AppCompatActivity {
             return;
         }
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        AlertDialog.Builder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Commit Message");
         EditText input = new EditText(this);
         input.setHint("Update " + currentFile);
@@ -133,7 +133,7 @@ public class EditorActivity extends AppCompatActivity {
     }
 
     private void showSettings() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        AlertDialog.Builder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("GitHub Settings");
         
         LinearLayout layout = new LinearLayout(this);

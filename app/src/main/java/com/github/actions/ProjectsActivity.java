@@ -120,68 +120,9 @@ public class ProjectsActivity extends AppCompatActivity {
         loadProjects();
     }
     
-    private AlertDialog.Builder createThemedDialog() {
-        return new AlertDialog.Builder(this);
-    }
     
-    private AlertDialog showThemedDialog(AlertDialog.Builder builder) {
-        SharedPreferences themePrefs = getSharedPreferences("GitCodeTheme", MODE_PRIVATE);
-        boolean isDark = themePrefs.getBoolean("darkMode", true);
-        
-        AlertDialog dialog = builder.create();
-        
-        // Apply dark theme BEFORE showing to prevent flash
-        if (isDark && dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF2D2D2D));
-        }
-        
-        dialog.show();
-        
-        // Apply text colors after showing
-        if (isDark && dialog.getWindow() != null) {
-            new android.os.Handler().post(() -> {
-                try {
-                    android.view.ViewGroup root = (android.view.ViewGroup) dialog.getWindow().getDecorView();
-                    applyDarkTheme(root);
-                    
-                    // Make dialog button text white
-                    android.widget.Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-                    android.widget.Button negativeButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
-                    android.widget.Button neutralButton = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
-                    
-                    if (positiveButton != null) positiveButton.setTextColor(0xFFFFFFFF);
-                    if (negativeButton != null) negativeButton.setTextColor(0xFFFFFFFF);
-                    if (neutralButton != null) neutralButton.setTextColor(0xFFFFFFFF);
-                } catch (Exception e) {
-                    // Ignore errors
-                }
-            });
-        }
-        
-        return dialog;
-    }
-    
-    private void applyDarkTheme(android.view.View view) {
-        if (view instanceof EditText) {
-            ((EditText) view).setTextColor(0xFFFFFFFF);
-            ((EditText) view).setHintTextColor(0xFF888888);
-        } else if (view instanceof android.widget.Button) {
-            // Keep button text black for visibility
-            ((android.widget.Button) view).setTextColor(0xFF000000);
-        } else if (view instanceof TextView) {
-            ((TextView) view).setTextColor(0xFFFFFFFF);
-        }
-        
-        if (view instanceof android.view.ViewGroup) {
-            android.view.ViewGroup group = (android.view.ViewGroup) view;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                applyDarkTheme(group.getChildAt(i));
-            }
-        }
-    }
-
     private void createProject() {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("New Project");
         
         LinearLayout layout = new LinearLayout(this);
@@ -233,7 +174,7 @@ public class ProjectsActivity extends AppCompatActivity {
             }
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void saveProject(String name, String path) {
@@ -306,7 +247,7 @@ public class ProjectsActivity extends AppCompatActivity {
     }
 
     private void editProject(String oldName, String path) {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Edit Project Name");
         EditText input = new EditText(this);
         input.setText(oldName);
@@ -340,11 +281,11 @@ public class ProjectsActivity extends AppCompatActivity {
             }
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void deleteProject(String name, String path) {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Delete Project");
         builder.setMessage("Delete '" + name + "' and all its files?");
         builder.setPositiveButton("Delete", (d, w) -> {
@@ -360,7 +301,7 @@ public class ProjectsActivity extends AppCompatActivity {
             }
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private boolean deleteRecursive(File file) {
@@ -393,7 +334,7 @@ public class ProjectsActivity extends AppCompatActivity {
         String profiles = profilePrefs.getString("profiles", "");
         String activeProfile = profilePrefs.getString("activeProfile", "");
         
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("GitHub Profiles");
         
         LinearLayout layout = new LinearLayout(this);
@@ -487,7 +428,7 @@ public class ProjectsActivity extends AppCompatActivity {
                         if (row.getChildAt(1) instanceof Button) {
                             Button btnDel = (Button) row.getChildAt(1);
                             btnDel.setOnClickListener(v -> {
-                                new AlertDialog.Builder(this)
+                                new com.github.actions.ui.M3DialogBuilder(this)
                                     .setTitle("Delete Profile")
                                     .setMessage("Delete profile: " + username + "?")
                                     .setPositiveButton("Delete", (d, w) -> {
@@ -530,7 +471,7 @@ public class ProjectsActivity extends AppCompatActivity {
     }
 
     private void addProfile() {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Add GitHub Profile");
         
         LinearLayout layout = new LinearLayout(this);
@@ -565,7 +506,7 @@ public class ProjectsActivity extends AppCompatActivity {
             showProfiles();
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void cloneRepo() {
@@ -578,7 +519,7 @@ public class ProjectsActivity extends AppCompatActivity {
             return;
         }
         
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Clone Repository");
         
         LinearLayout layout = new LinearLayout(this);
@@ -609,7 +550,7 @@ public class ProjectsActivity extends AppCompatActivity {
             cloneRepoFromGitHub(repoOwner, token, repoName);
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void cloneRepoFromGitHub(String username, String token, String repo) {
@@ -695,7 +636,7 @@ public class ProjectsActivity extends AppCompatActivity {
     }
 
     private void showSettings() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        AlertDialog.Builder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("App Settings");
         
         LinearLayout layout = new LinearLayout(this);

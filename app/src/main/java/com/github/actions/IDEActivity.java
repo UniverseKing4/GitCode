@@ -129,8 +129,9 @@ public class IDEActivity extends AppCompatActivity {
         
         lineNumbers.setGravity(Gravity.TOP | Gravity.END);
         lineNumbers.setPadding(8, 20, 2, 20);
-        lineNumbers.setBackgroundColor(isDark ? 0xFF2D2D2D : 0xFFF5F5F5);
-        lineNumbers.setTextColor(isDark ? 0xFF666666 : 0xFF999999);
+        // Material 3 line number colors
+        lineNumbers.setBackgroundColor(isDark ? 0xFF211F26 : 0xFFF3EDF7);
+        lineNumbers.setTextColor(isDark ? 0xFF938F99 : 0xFF79747E);
         lineNumbers.setLineSpacing(0, 1.0f);
         lineNumbers.setLayoutParams(new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -671,47 +672,6 @@ public class IDEActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
     
-    private AlertDialog.Builder createThemedDialog() {
-        return new AlertDialog.Builder(this);
-    }
-    
-    private AlertDialog showThemedDialog(AlertDialog.Builder builder) {
-        SharedPreferences themePrefs = getSharedPreferences("GitCodeTheme", MODE_PRIVATE);
-        boolean isDark = themePrefs.getBoolean("darkMode", true);
-        
-        AlertDialog dialog = builder.create();
-        
-        // Apply dark theme BEFORE showing to prevent flash
-        if (isDark && dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF2D2D2D));
-        }
-        
-        dialog.show();
-        
-        // Apply text colors after showing
-        if (isDark && dialog.getWindow() != null) {
-            new android.os.Handler().post(() -> {
-                try {
-                    android.view.ViewGroup root = (android.view.ViewGroup) dialog.getWindow().getDecorView();
-                    applyDarkTheme(root);
-                    
-                    // Make dialog button text white
-                    android.widget.Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-                    android.widget.Button negativeButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
-                    android.widget.Button neutralButton = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
-                    
-                    if (positiveButton != null) positiveButton.setTextColor(0xFFFFFFFF);
-                    if (negativeButton != null) negativeButton.setTextColor(0xFFFFFFFF);
-                    if (neutralButton != null) neutralButton.setTextColor(0xFFFFFFFF);
-                } catch (Exception e) {
-                    // Ignore errors
-                }
-            });
-        }
-        
-        return dialog;
-    }
-    
     private void applyDarkTheme(android.view.View view) {
         if (view instanceof EditText) {
             ((EditText) view).setTextColor(0xFFFFFFFF);
@@ -732,7 +692,7 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void showSettings() {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Editor Settings");
         
         LinearLayout layout = new LinearLayout(this);
@@ -773,7 +733,7 @@ public class IDEActivity extends AppCompatActivity {
             Toast.makeText(this, "Font size: " + size + "sp", Toast.LENGTH_SHORT).show();
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void toggleWordWrap(MenuItem item) {
@@ -892,7 +852,7 @@ public class IDEActivity extends AppCompatActivity {
     private boolean useLineBasedChunking = false;
     
     private void showFindDialog() {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Find");
         
         LinearLayout layout = new LinearLayout(this);
@@ -943,11 +903,11 @@ public class IDEActivity extends AppCompatActivity {
             }
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void showReplaceDialog() {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Find & Replace");
         
         LinearLayout layout = new LinearLayout(this);
@@ -1015,11 +975,11 @@ public class IDEActivity extends AppCompatActivity {
             }
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void showGoToLineDialog() {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         
         if (isLargeFile) {
             builder.setTitle("Go to Line or Part");
@@ -1165,7 +1125,7 @@ public class IDEActivity extends AppCompatActivity {
                 }
             });
             builder.setNegativeButton("Cancel", null);
-            showThemedDialog(builder);
+            builder.show();
         } else {
             // Normal go to line for small files
             builder.setTitle("Go to Line");
@@ -1196,7 +1156,7 @@ public class IDEActivity extends AppCompatActivity {
                 }
             });
             builder.setNegativeButton("Cancel", null);
-            showThemedDialog(builder);
+            builder.show();
         }
     }
 
@@ -1399,7 +1359,7 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void showSelectionMenu() {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Selected: " + selectedFiles.size());
         
         String[] options = new String[]{"Move", "Delete", "Done"};
@@ -1417,7 +1377,7 @@ public class IDEActivity extends AppCompatActivity {
                     break;
             }
         });
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void exitSelectionMode() {
@@ -1433,7 +1393,7 @@ public class IDEActivity extends AppCompatActivity {
             return;
         }
         
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Move to folder");
         
         java.util.List<File> folders = new java.util.ArrayList<>();
@@ -1468,7 +1428,7 @@ public class IDEActivity extends AppCompatActivity {
             exitSelectionMode();
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void collectFolders(File dir, java.util.List<File> folders) {
@@ -1489,7 +1449,7 @@ public class IDEActivity extends AppCompatActivity {
             return;
         }
         
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Delete " + selectedFiles.size() + " items?");
         builder.setMessage("This action cannot be undone.");
         builder.setPositiveButton("Delete", (d, w) -> {
@@ -1510,11 +1470,11 @@ public class IDEActivity extends AppCompatActivity {
             exitSelectionMode();
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void showFolderMenu(File folder) {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle(folder.getName());
         
         String[] options = new String[]{"New File Here", "New Folder Here", "Move", "Rename", "Delete"};
@@ -1528,11 +1488,11 @@ public class IDEActivity extends AppCompatActivity {
                 case 4: deleteFile(folder); break;
             }
         });
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void createNewFileInFolder(File folder) {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("New File in " + folder.getName());
         EditText input = new EditText(this);
         input.setHint("filename.ext");
@@ -1552,11 +1512,11 @@ public class IDEActivity extends AppCompatActivity {
             }
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void createNewFolderInFolder(File parent) {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("New Folder in " + parent.getName());
         EditText input = new EditText(this);
         input.setHint("folder name");
@@ -1580,7 +1540,7 @@ public class IDEActivity extends AppCompatActivity {
             }
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void expandFolder(File folder, LinearLayout container) {
@@ -1588,7 +1548,7 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void showFileMenu(File file) {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle(file.getName());
         
         String[] options = new String[]{"Open", "Move", "Rename", "Delete"};
@@ -1601,7 +1561,7 @@ public class IDEActivity extends AppCompatActivity {
                 case 3: deleteFile(file); break;
             }
         });
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void moveSingleFile(File file) {
@@ -1611,7 +1571,7 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void renameFile(File file) {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Rename");
         EditText input = new EditText(this);
         input.setText(file.getName());
@@ -1642,11 +1602,11 @@ public class IDEActivity extends AppCompatActivity {
             }
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void deleteFile(File file) {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Delete");
         builder.setMessage("Delete " + file.getName() + "?");
         builder.setPositiveButton("Delete", (d, w) -> {
@@ -1665,7 +1625,7 @@ public class IDEActivity extends AppCompatActivity {
             }
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private boolean deleteRecursive(File file) {
@@ -1681,7 +1641,7 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void createNewFolder() {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("New Folder");
         EditText input = new EditText(this);
         input.setHint("folder name");
@@ -1705,7 +1665,7 @@ public class IDEActivity extends AppCompatActivity {
             }
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void openFile(File file) {
@@ -2216,13 +2176,14 @@ public class IDEActivity extends AppCompatActivity {
             LinearLayout tab = new LinearLayout(this);
             tab.setOrientation(LinearLayout.HORIZONTAL);
             tab.setPadding(15, 10, 15, 10);
+            // Material 3 tab colors
             tab.setBackgroundColor(file.equals(currentFile) ? 
-                (isDark ? 0xFF1E1E1E : 0xFFFFFFFF) : 
-                (isDark ? 0xFF2D2D2D : 0xFFE0E0E0));
+                (isDark ? 0xFF211F26 : 0xFFF3EDF7) : 
+                (isDark ? 0xFF49454F : 0xFFE7E0EC));
             
             TextView tabText = new TextView(this);
             tabText.setText(file.getName());
-            tabText.setTextColor(isDark ? 0xFFE0E0E0 : 0xFF000000);
+            tabText.setTextColor(isDark ? 0xFFE6E1E5 : 0xFF1C1B1F);
             tabText.setTextSize(14);
             tabText.setPadding(0, 0, 10, 0);
             tab.addView(tabText);
@@ -2230,7 +2191,7 @@ public class IDEActivity extends AppCompatActivity {
             TextView closeBtn = new TextView(this);
             closeBtn.setText("×");
             closeBtn.setTextSize(18);
-            closeBtn.setTextColor(isDark ? 0xFFE0E0E0 : 0xFF000000);
+            closeBtn.setTextColor(isDark ? 0xFFCAC4D0 : 0xFF49454F);
             closeBtn.setOnClickListener(v -> closeTab(file));
             tab.addView(closeBtn);
             
@@ -2253,9 +2214,10 @@ public class IDEActivity extends AppCompatActivity {
         for (int i = 0; i < tabBar.getChildCount() && i < openTabs.size(); i++) {
             try {
                 LinearLayout tab = (LinearLayout) tabBar.getChildAt(i);
+                // Material 3 tab colors
                 tab.setBackgroundColor(openTabs.get(i).equals(file) ? 
-                    (isDark ? 0xFF1E1E1E : 0xFFFFFFFF) : 
-                    (isDark ? 0xFF2D2D2D : 0xFFE0E0E0));
+                    (isDark ? 0xFF211F26 : 0xFFF3EDF7) : 
+                    (isDark ? 0xFF49454F : 0xFFE7E0EC));
             } catch (Exception e) {
                 // Skip if index mismatch
             }
@@ -2616,7 +2578,7 @@ public class IDEActivity extends AppCompatActivity {
     }
 
     private void createNewFile() {
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("New File");
         EditText input = new EditText(this);
         input.setHint("filename.ext");
@@ -2654,7 +2616,7 @@ public class IDEActivity extends AppCompatActivity {
             }
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void saveCurrentFile() {
@@ -2698,7 +2660,7 @@ public class IDEActivity extends AppCompatActivity {
             return;
         }
         
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Commit & Push");
         EditText input = new EditText(this);
         input.setHint("Commit message");
@@ -2716,7 +2678,7 @@ public class IDEActivity extends AppCompatActivity {
             pushAllToGitHub(username, token, projectName, message);
         });
         builder.setNegativeButton("Cancel", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private void pushAllToGitHub(String username, String token, String repo, String message) {
@@ -2932,7 +2894,7 @@ public class IDEActivity extends AppCompatActivity {
         File dir = new File(projectPath);
         int[] stats = calculateStats(dir);
         
-        AlertDialog.Builder builder = createThemedDialog();
+        com.github.actions.ui.M3DialogBuilder builder = new com.github.actions.ui.M3DialogBuilder(this);
         builder.setTitle("Project Statistics");
         
         TextView tv = new TextView(this);
@@ -2947,7 +2909,7 @@ public class IDEActivity extends AppCompatActivity {
         
         builder.setView(tv);
         builder.setPositiveButton("OK", null);
-        showThemedDialog(builder);
+        builder.show();
     }
 
     private int[] calculateStats(File dir) {

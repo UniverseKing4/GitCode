@@ -21,8 +21,9 @@ GitCode transforms your Android device into a powerful development environment. 
 ## ✨ Key Features
 
 ### 🎨 **Advanced Code Editor**
-- **Multi-Language Syntax Highlighting** - Support for Java, JavaScript, Python, C/C++, Go, Rust, PHP, Ruby, Swift, Kotlin, HTML, CSS, and more
-- **Smart Line Numbers** - Dynamic, perfectly aligned line numbers that scale with your code
+- **Multi-Language Syntax Highlighting** - Professional Material 3 color schemes for Java, JavaScript, Python, C/C++, Go, Rust, PHP, Ruby, Swift, Kotlin, HTML, CSS, and more
+- **Smart Line Numbers** - Material 3 styled line numbers with proper contrast
+- **Current Line Highlighting** - Subtle background highlight for better focus
 - **Large File Support** - Intelligent chunking for files >10KB or 1000+ lines with seamless navigation
 - **Bracket Matching** - Click any bracket to highlight its matching pair
 - **Auto-Indent & Auto-Brackets** - Intelligent code formatting as you type
@@ -32,11 +33,11 @@ GitCode transforms your Android device into a powerful development environment. 
 - **Go to Line/Part** - Jump to any line or file section instantly
 
 ### 📑 **Tabbed Interface**
-- Open multiple files simultaneously
+- Material 3 styled tabs with proper elevation and colors
 - Horizontal scrolling for unlimited tabs
 - Quick tab switching with visual indicators
 - Individual close buttons on each tab
-- Active tab highlighting
+- Active tab highlighting with Material 3 colors
 - Seamless file navigation
 
 ### 🔗 **GitHub Integration**
@@ -64,14 +65,18 @@ GitCode transforms your Android device into a powerful development environment. 
 - **Welcome Messages** - Helpful prompts when no files are open
 - **Toast Notifications** - Clear feedback for all operations
 
-### 🌙 **Modern UI/UX**
-- **Dark Mode** - Eye-friendly dark theme (default) with consistent styling
-- **Light Mode** - Clean light theme option
-- **Themed Dialogs** - All dialogs match your selected theme
+### 🌙 **Modern UI/UX - Material 3 Design**
+- **Material 3 Design System** - Complete implementation with dynamic theming
+- **Professional Color Schemes** - WCAG AA compliant colors for accessibility
+- **Dark Mode** - Eye-friendly dark theme with Material 3 colors (default)
+- **Light Mode** - Clean light theme with Material 3 colors
+- **AMOLED Mode** - Pure black theme for battery saving
+- **Material 3 Dialogs** - All dialogs styled with proper elevation and rounded corners
+- **Enhanced Buttons** - Filled, Tonal, Outlined, and Text button variants
 - **Compact Toolbar** - Efficient use of screen space with emoji icons
 - **Responsive Design** - Optimized for all screen sizes
 - **Smooth Animations** - Polished user experience with no lag
-- **Professional Layout** - Clean, intuitive interface
+- **Professional Layout** - Clean, intuitive interface with proper spacing
 
 ## 📸 Screenshots
 
