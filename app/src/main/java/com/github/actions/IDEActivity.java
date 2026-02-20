@@ -1650,7 +1650,7 @@ public class IDEActivity extends AppCompatActivity {
     
     private void updateLineNumbersForChunk(String chunk, int startPos) {
         executor.execute(() -> {
-            // Count lines before this chunk
+            // Count lines before this chunk in the full file
             String beforeChunk = startPos > 0 ? fullFileContent.substring(0, startPos) : "";
             int startLineNumber = beforeChunk.isEmpty() ? 1 : beforeChunk.split("\n", -1).length;
             
@@ -1660,9 +1660,11 @@ public class IDEActivity extends AppCompatActivity {
             
             StringBuilder sb = new StringBuilder();
             
-            // Add empty lines for "Load Previous" button if present
+            // Add empty line for "Load Previous" button if present
+            // The button text is: "▲▲▲ TAP TO LOAD PREVIOUS (X/Y) ▲▲▲\n\n"
+            // This creates 1 line for button text + 2 newlines = 3 lines total
             if (startPos > 0) {
-                sb.append("\n\n");
+                sb.append("\n\n\n");
             }
             
             // Add line numbers starting from correct position
@@ -1672,8 +1674,10 @@ public class IDEActivity extends AppCompatActivity {
             }
             
             // Add empty lines for "Load Next" button if present
+            // The button text is: "\n\n▼▼▼ TAP TO LOAD NEXT (X/Y) ▼▼▼"
+            // This creates 2 newlines + 1 line for button text = 3 lines total
             if (startPos + CHUNK_SIZE < fullFileContent.length()) {
-                sb.append("\n\n");
+                sb.append("\n\n\n");
             }
             
             String lineNumberText = sb.toString();
