@@ -508,13 +508,6 @@ public class ProjectsActivity extends AppCompatActivity {
         
         dialog.show();
         
-        // Set dialog width to match parent with margins
-        if (dialog.getWindow() != null) {
-            android.view.WindowManager.LayoutParams params = dialog.getWindow().getAttributes();
-            params.width = android.view.WindowManager.LayoutParams.MATCH_PARENT;
-            dialog.getWindow().setAttributes(params);
-        }
-        
         // Apply text colors AFTER showing
         if (isDark && dialog.getWindow() != null) {
             new android.os.Handler().post(() -> {
