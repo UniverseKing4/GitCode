@@ -90,7 +90,7 @@ public class IDEActivity extends AppCompatActivity {
         }
         
         // Tab bar with horizontal scrolling
-        HorizontalScrollView tabScroll = new HorizontalScrollView(this);
+        android.widget.HorizontalScrollView tabScroll = new android.widget.HorizontalScrollView(this);
         tabScroll.setHorizontalScrollBarEnabled(false);
         tabScroll.setLayoutParams(new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -243,8 +243,21 @@ public class IDEActivity extends AppCompatActivity {
                 String text = s.toString();
                 long currentTime = System.currentTimeMillis();
                 
-                // For large files, only do syntax highlighting
+                // For large files, track undo/redo on full content
                 if (isLargeFile) {
+                    // Track for undo/redo with time-based grouping
+                    if (!isUndoRedo && currentTime - lastEditTime > UNDO_DELAY) {
+                        updateFullContentFromChunk();
+                        if (!undoStack.isEmpty() && !undoStack.peek().equals(fullFileContent)) {
+                            undoStack.push(fullFileContent);
+                        } else if (undoStack.isEmpty()) {
+                            undoStack.push(fullFileContent);
+                        }
+                        if (undoStack.size() > 50) undoStack.remove(0);
+                        redoStack.clear();
+                        lastEditTime = currentTime;
+                    }
+                    
                     // Trigger syntax highlighting after 2 seconds
                     syntaxHandler.removeCallbacks(syntaxRunnable);
                     syntaxHandler.postDelayed(syntaxRunnable, 2000);
@@ -740,16 +753,31 @@ public class IDEActivity extends AppCompatActivity {
 
     private void undo() {
         if (!undoStack.isEmpty()) {
-            String current = editor.getText().toString();
-            redoStack.push(current);
-            String previous = undoStack.pop();
-            isUndoRedo = true;
-            editor.setText(previous);
-            if (currentFile != null) {
-                applySyntaxHighlighting(currentFile.getName(), previous);
+            if (isLargeFile) {
+                // For large files, update full content first
+                updateFullContentFromChunk();
+                redoStack.push(fullFileContent);
+                fullFileContent = undoStack.pop();
+                isUndoRedo = true;
+                // Reload current chunk
+                if (useLineBasedChunking) {
+                    loadChunkWithButtons(currentChunkLine);
+                } else {
+                    loadChunkWithButtons(currentChunkStart);
+                }
+                isUndoRedo = false;
+            } else {
+                String current = editor.getText().toString();
+                redoStack.push(current);
+                String previous = undoStack.pop();
+                isUndoRedo = true;
+                editor.setText(previous);
+                if (currentFile != null) {
+                    applySyntaxHighlighting(currentFile.getName(), previous);
+                }
+                editor.setSelection(Math.min(previous.length(), editor.getText().length()));
+                isUndoRedo = false;
             }
-            editor.setSelection(Math.min(previous.length(), editor.getText().length()));
-            isUndoRedo = false;
         } else {
             Toast.makeText(this, "Nothing to undo", Toast.LENGTH_SHORT).show();
         }
@@ -757,16 +785,31 @@ public class IDEActivity extends AppCompatActivity {
 
     private void redo() {
         if (!redoStack.isEmpty()) {
-            String current = editor.getText().toString();
-            undoStack.push(current);
-            String next = redoStack.pop();
-            isUndoRedo = true;
-            editor.setText(next);
-            if (currentFile != null) {
-                applySyntaxHighlighting(currentFile.getName(), next);
+            if (isLargeFile) {
+                // For large files, update full content first
+                updateFullContentFromChunk();
+                undoStack.push(fullFileContent);
+                fullFileContent = redoStack.pop();
+                isUndoRedo = true;
+                // Reload current chunk
+                if (useLineBasedChunking) {
+                    loadChunkWithButtons(currentChunkLine);
+                } else {
+                    loadChunkWithButtons(currentChunkStart);
+                }
+                isUndoRedo = false;
+            } else {
+                String current = editor.getText().toString();
+                undoStack.push(current);
+                String next = redoStack.pop();
+                isUndoRedo = true;
+                editor.setText(next);
+                if (currentFile != null) {
+                    applySyntaxHighlighting(currentFile.getName(), next);
+                }
+                editor.setSelection(Math.min(next.length(), editor.getText().length()));
+                isUndoRedo = false;
             }
-            editor.setSelection(Math.min(next.length(), editor.getText().length()));
-            isUndoRedo = false;
         } else {
             Toast.makeText(this, "Nothing to redo", Toast.LENGTH_SHORT).show();
         }
