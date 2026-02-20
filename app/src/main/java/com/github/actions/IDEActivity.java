@@ -869,63 +869,6 @@ public class IDEActivity extends AppCompatActivity {
             Toast.makeText(this, "Nothing to redo", Toast.LENGTH_SHORT).show();
         }
     }
-                fullFileContent = undoStack.pop();
-                isUndoRedo = true;
-                // Reload current chunk
-                if (useLineBasedChunking) {
-                    loadChunkWithButtons(currentChunkLine);
-                } else {
-                    loadChunkWithButtons(currentChunkStart);
-                }
-                isUndoRedo = false;
-            } else {
-                String current = editor.getText().toString();
-                redoStack.push(current);
-                String previous = undoStack.pop();
-                isUndoRedo = true;
-                editor.setText(previous);
-                if (currentFile != null) {
-                    applySyntaxHighlighting(currentFile.getName(), previous);
-                }
-                editor.setSelection(Math.min(previous.length(), editor.getText().length()));
-                isUndoRedo = false;
-            }
-        } else {
-            Toast.makeText(this, "Nothing to undo", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void redo() {
-        if (!redoStack.isEmpty()) {
-            if (isLargeFile) {
-                // For large files, update full content first
-                updateFullContentFromChunk();
-                undoStack.push(fullFileContent);
-                fullFileContent = redoStack.pop();
-                isUndoRedo = true;
-                // Reload current chunk
-                if (useLineBasedChunking) {
-                    loadChunkWithButtons(currentChunkLine);
-                } else {
-                    loadChunkWithButtons(currentChunkStart);
-                }
-                isUndoRedo = false;
-            } else {
-                String current = editor.getText().toString();
-                undoStack.push(current);
-                String next = redoStack.pop();
-                isUndoRedo = true;
-                editor.setText(next);
-                if (currentFile != null) {
-                    applySyntaxHighlighting(currentFile.getName(), next);
-                }
-                editor.setSelection(Math.min(next.length(), editor.getText().length()));
-                isUndoRedo = false;
-            }
-        } else {
-            Toast.makeText(this, "Nothing to redo", Toast.LENGTH_SHORT).show();
-        }
-    }
 
     private int currentFindIndex = 0;
     private java.util.List<Integer> findOccurrences = new java.util.ArrayList<>();
