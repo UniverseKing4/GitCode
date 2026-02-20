@@ -1815,17 +1815,58 @@ public class IDEActivity extends AppCompatActivity {
             return false;
         });
         
-        // Monitor cursor position and force it away from protected lines
+        // Monitor cursor position and force it away from protected lines INSTANTLY
         editor.addTextChangedListener(new android.text.TextWatcher() {
+            private boolean isMoving = false;
+            
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                if (!isLargeFile || isMoving) return;
+                
+                // Check cursor position BEFORE any change
+                String text = s.toString();
+                int cursor = editor.getSelectionStart();
+                
+                int protectedLine1Start = -1, protectedLine1End = -1;
+                int protectedLine2Start = -1, protectedLine2End = -1;
+                
+                if (text.startsWith("▲▲▲")) {
+                    int firstNewline = text.indexOf("\n");
+                    if (firstNewline > 0) {
+                        protectedLine1Start = firstNewline + 1;
+                        int secondNewline = text.indexOf("\n", firstNewline + 1);
+                        if (secondNewline > 0) {
+                            protectedLine1End = secondNewline + 1;
+                        }
+                    }
+                }
+                
+                if (text.endsWith("▼▼▼")) {
+                    int buttonStart = text.lastIndexOf("\n\n▼▼▼");
+                    if (buttonStart > 0) {
+                        protectedLine2Start = buttonStart + 1;
+                        protectedLine2End = buttonStart + 2;
+                    }
+                }
+                
+                // Move cursor INSTANTLY if in protected zone
+                if (protectedLine1Start >= 0 && cursor >= protectedLine1Start && cursor < protectedLine1End) {
+                    isMoving = true;
+                    editor.setSelection(Math.min(protectedLine1End, text.length()));
+                    isMoving = false;
+                } else if (protectedLine2Start >= 0 && cursor >= protectedLine2Start && cursor < protectedLine2End) {
+                    isMoving = true;
+                    editor.setSelection(Math.max(0, protectedLine2Start - 1));
+                    isMoving = false;
+                }
+            }
             
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {}
             
             @Override
             public void afterTextChanged(android.text.Editable s) {
-                if (!isLargeFile) return;
+                if (!isLargeFile || isMoving) return;
                 
                 String text = s.toString();
                 int cursor = editor.getSelectionStart();
@@ -1854,13 +1895,13 @@ public class IDEActivity extends AppCompatActivity {
                 
                 // Force cursor away from protected lines
                 if (protectedLine1Start >= 0 && cursor >= protectedLine1Start && cursor < protectedLine1End) {
-                    editor.removeTextChangedListener(this);
+                    isMoving = true;
                     editor.setSelection(Math.min(protectedLine1End, text.length()));
-                    editor.addTextChangedListener(this);
+                    isMoving = false;
                 } else if (protectedLine2Start >= 0 && cursor >= protectedLine2Start && cursor < protectedLine2End) {
-                    editor.removeTextChangedListener(this);
+                    isMoving = true;
                     editor.setSelection(Math.max(0, protectedLine2Start - 1));
-                    editor.addTextChangedListener(this);
+                    isMoving = false;
                 }
             }
         });
@@ -1875,8 +1916,23 @@ public class IDEActivity extends AppCompatActivity {
         currentText = currentText.replaceFirst("^▲▲▲ TAP TO LOAD PREVIOUS \\(\\d+/\\d+\\) ▲▲▲\\n\\n", "");
         currentText = currentText.replaceFirst("\\n\\n▼▼▼ TAP TO LOAD NEXT \\(\\d+/\\d+\\) ▼▼▼$", "");
         
+        // Calculate chunk end position
+        int chunkEnd;
+        if (useLineBasedChunking) {
+            // For line-based, calculate end position from line count
+            String[] allLines = fullFileContent.split("\n", -1);
+            int endLine = Math.min(currentChunkLine + CHUNK_LINES, allLines.length);
+            chunkEnd = 0;
+            for (int i = 0; i < endLine; i++) {
+                chunkEnd += allLines[i].length() + 1;
+            }
+            chunkEnd = Math.min(chunkEnd, fullFileContent.length());
+        } else {
+            // For character-based
+            chunkEnd = Math.min(currentChunkStart + CHUNK_SIZE, fullFileContent.length());
+        }
+        
         String before = currentChunkStart > 0 ? fullFileContent.substring(0, currentChunkStart) : "";
-        int chunkEnd = Math.min(currentChunkStart + CHUNK_SIZE, fullFileContent.length());
         String after = chunkEnd < fullFileContent.length() ? fullFileContent.substring(chunkEnd) : "";
         fullFileContent = before + currentText + after;
     }
