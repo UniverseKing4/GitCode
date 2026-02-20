@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**A fully-featured, professional mobile IDE for Android with GitHub integration, advanced code editing, and modern development tools.**
+**A fully-featured, professional mobile IDE for Android with GitHub integration, advanced code editing, large file support, and modern development tools.**
 
 [![Latest Release](https://img.shields.io/github/v/release/UniverseKing4/GitHubActionsApp)](https://github.com/UniverseKing4/GitHubActionsApp/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -16,22 +16,25 @@
 
 ## 🌟 Overview
 
-GitCode transforms your Android device into a powerful development environment. Write, edit, and manage code projects with professional-grade features including syntax highlighting, GitHub integration, and intelligent code editing tools.
+GitCode transforms your Android device into a powerful development environment. Write, edit, and manage code projects of any size with professional-grade features including syntax highlighting, intelligent large file handling, GitHub integration, and polished UI/UX.
 
 ## ✨ Key Features
 
 ### 🎨 **Advanced Code Editor**
 - **Multi-Language Syntax Highlighting** - Support for Java, JavaScript, Python, C/C++, Go, Rust, PHP, Ruby, Swift, Kotlin, HTML, CSS, and more
 - **Smart Line Numbers** - Dynamic, perfectly aligned line numbers that scale with your code
+- **Large File Support** - Intelligent chunking for files >10KB or 1000+ lines with seamless navigation
 - **Bracket Matching** - Click any bracket to highlight its matching pair
 - **Auto-Indent & Auto-Brackets** - Intelligent code formatting as you type
 - **Customizable Font Size** - Adjustable from 10sp to 30sp for comfortable coding
 - **Word Wrap** - Toggle word wrapping for long lines
-- **Undo/Redo** - Full undo/redo support with keyboard shortcuts
+- **Undo/Redo** - Full undo/redo support with visual feedback
+- **Go to Line/Part** - Jump to any line or file section instantly
 
 ### 📑 **Tabbed Interface**
 - Open multiple files simultaneously
-- Quick tab switching
+- Horizontal scrolling for unlimited tabs
+- Quick tab switching with visual indicators
 - Individual close buttons on each tab
 - Active tab highlighting
 - Seamless file navigation
@@ -41,8 +44,8 @@ GitCode transforms your Android device into a powerful development environment. 
 - **Smart Push** - Automatically detects and pushes only modified files
 - **Pull Changes** - Sync your local project with remote repository
 - **File Deletion Detection** - Automatically removes deleted files from GitHub
-- **Multiple Profiles** - Switch between different GitHub accounts
-- **Secure Authentication** - Personal Access Token support
+- **Multiple Profiles** - Switch between different GitHub accounts with ease
+- **Secure Authentication** - Personal Access Token support with encrypted storage
 
 ### 📁 **Project Management**
 - Create and manage multiple projects
@@ -51,20 +54,24 @@ GitCode transforms your Android device into a powerful development environment. 
 - File selection mode with batch operations
 - Project statistics (file count, folder count, lines of code, character count)
 - Recent projects list on home screen
+- Auto-save functionality
 
 ### 🎯 **Developer Tools**
-- **Find & Replace** - Search and replace text across files
-- **Auto-Save** - Never lose your work
+- **Find & Replace** - Search and replace text across files with occurrence tracking
+- **Auto-Save** - Never lose your work with automatic saving
 - **Keyboard Shortcuts** - Efficient coding with shortcuts
-- **File Browser** - Expandable/collapsible folder tree
+- **File Browser** - Expandable/collapsible folder tree with drawer navigation
 - **Welcome Messages** - Helpful prompts when no files are open
+- **Toast Notifications** - Clear feedback for all operations
 
 ### 🌙 **Modern UI/UX**
-- **Dark Mode** - Eye-friendly dark theme (default)
+- **Dark Mode** - Eye-friendly dark theme (default) with consistent styling
 - **Light Mode** - Clean light theme option
-- **Compact Toolbar** - Efficient use of screen space
+- **Themed Dialogs** - All dialogs match your selected theme
+- **Compact Toolbar** - Efficient use of screen space with emoji icons
 - **Responsive Design** - Optimized for all screen sizes
-- **Smooth Animations** - Polished user experience
+- **Smooth Animations** - Polished user experience with no lag
+- **Professional Layout** - Clean, intuitive interface
 
 ## 📸 Screenshots
 
@@ -251,8 +258,6 @@ Contributions are welcome! Please:
 
 ## 🐛 Known Issues
 
-- Large files (>5MB) may cause performance issues
-- Binary files are not supported for editing
 - GitHub API rate limits apply (60 requests/hour unauthenticated, 5000/hour authenticated)
 
 ## 📄 License
