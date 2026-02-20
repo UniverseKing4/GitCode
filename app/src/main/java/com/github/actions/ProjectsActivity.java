@@ -440,6 +440,14 @@ public class ProjectsActivity extends AppCompatActivity {
         builder.setNegativeButton("Close", null);
         AlertDialog dialog = builder.create();
         
+        SharedPreferences themePrefs = getSharedPreferences("GitCodeTheme", MODE_PRIVATE);
+        boolean isDark = themePrefs.getBoolean("darkMode", true);
+        
+        // Apply dark background BEFORE showing
+        if (isDark && dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF2D2D2D));
+        }
+        
         // Set click listeners after dialog is created
         for (String profile : profiles.split(";")) {
             if (profile.isEmpty()) continue;
@@ -499,6 +507,26 @@ public class ProjectsActivity extends AppCompatActivity {
         });
         
         dialog.show();
+        
+        // Set dialog width to match parent with margins
+        if (dialog.getWindow() != null) {
+            android.view.WindowManager.LayoutParams params = dialog.getWindow().getAttributes();
+            params.width = android.view.WindowManager.LayoutParams.MATCH_PARENT;
+            dialog.getWindow().setAttributes(params);
+        }
+        
+        // Apply text colors AFTER showing
+        if (isDark && dialog.getWindow() != null) {
+            new android.os.Handler().post(() -> {
+                try {
+                    android.view.ViewGroup root = (android.view.ViewGroup) dialog.getWindow().getDecorView();
+                    applyDarkTheme(root);
+                    
+                    android.widget.Button negativeButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+                    if (negativeButton != null) negativeButton.setTextColor(0xFFFFFFFF);
+                } catch (Exception e) {}
+            });
+        }
     }
 
     private void addProfile() {
