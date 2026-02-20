@@ -209,18 +209,10 @@ public class IDEActivity extends AppCompatActivity {
         
         // Syntax highlighting setup
         syntaxRunnable = () -> {
-            if (currentFile != null) {
+            if (currentFile != null && !isLargeFile) {
                 String currentText = editor.getText().toString();
                 if (!currentText.equals(lastHighlightedText)) {
-                    // For large files, only highlight the chunk content (skip buttons)
-                    if (isLargeFile) {
-                        String textToHighlight = currentText;
-                        textToHighlight = textToHighlight.replaceFirst("^▲▲▲ TAP TO LOAD PREVIOUS \\(\\d+/\\d+\\) ▲▲▲\\n\\n", "");
-                        textToHighlight = textToHighlight.replaceFirst("\\n\\n▼▼▼ TAP TO LOAD NEXT \\(\\d+/\\d+\\) ▼▼▼$", "");
-                        applySyntaxHighlighting(currentFile.getName(), textToHighlight);
-                    } else {
-                        applySyntaxHighlighting(currentFile.getName(), currentText);
-                    }
+                    applySyntaxHighlighting(currentFile.getName(), currentText);
                     lastHighlightedText = currentText;
                 }
             }
@@ -555,6 +547,15 @@ public class IDEActivity extends AppCompatActivity {
         } else {
             showWelcomeMessage();
         }
+    }
+    
+    @Override
+    public void onBackPressed() {
+        // Auto-save before going back
+        if (currentFile != null) {
+            autoSaveFile();
+        }
+        super.onBackPressed();
     }
 
     private void showWelcomeMessage() {
@@ -913,25 +914,49 @@ public class IDEActivity extends AppCompatActivity {
                 String partStr = partInput.getText().toString().trim();
                 
                 if (!lineStr.isEmpty()) {
-                    // Go to line
+                    // Go to line in full file
                     try {
                         int line = Integer.parseInt(lineStr);
                         String[] allLines = fullFileContent.split("\n", -1);
                         
                         if (line > 0 && line <= allLines.length) {
-                            // Calculate which chunk contains this line
+                            // Calculate character position of this line in full file
                             int charPos = 0;
                             for (int i = 0; i < line - 1; i++) {
                                 charPos += allLines[i].length() + 1;
                             }
                             
-                            // Load the chunk containing this line
+                            // Save current chunk before loading new one
                             updateFullContentFromChunk();
+                            
+                            // Load the chunk containing this line
                             loadChunkWithButtons(charPos);
+                            
+                            // Calculate position within the displayed chunk
+                            String displayedText = editor.getText().toString();
+                            int buttonOffset = displayedText.startsWith("▲▲▲") ? 
+                                displayedText.indexOf("\n\n") + 2 : 0;
+                            
+                            // Calculate line position within chunk
+                            int linesBeforeChunk = fullFileContent.substring(0, currentChunkStart).split("\n", -1).length - 1;
+                            int targetLineInChunk = line - linesBeforeChunk - 1;
+                            
+                            // Find cursor position in displayed text
+                            String[] displayedLines = displayedText.substring(buttonOffset).split("\n", -1);
+                            int cursorPos = buttonOffset;
+                            for (int i = 0; i < targetLineInChunk && i < displayedLines.length; i++) {
+                                cursorPos += displayedLines[i].length() + 1;
+                            }
+                            
+                            // Set cursor to line start
+                            if (cursorPos <= displayedText.length()) {
+                                editor.setSelection(Math.min(cursorPos, displayedText.length()));
+                                editor.requestFocus();
+                            }
                             
                             Toast.makeText(this, "Line " + line, Toast.LENGTH_SHORT).show();
                         } else {
-                            Toast.makeText(this, "Invalid line number", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "Invalid line number (1-" + allLines.length + ")", Toast.LENGTH_SHORT).show();
                         }
                     } catch (Exception e) {
                         Toast.makeText(this, "Invalid line number", Toast.LENGTH_SHORT).show();
@@ -947,7 +972,7 @@ public class IDEActivity extends AppCompatActivity {
                             loadChunkWithButtons((part - 1) * CHUNK_SIZE);
                             Toast.makeText(this, "Part " + part + "/" + totalParts, Toast.LENGTH_SHORT).show();
                         } else {
-                            Toast.makeText(this, "Invalid part number", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "Invalid part number (1-" + totalParts + ")", Toast.LENGTH_SHORT).show();
                         }
                     } catch (Exception e) {
                         Toast.makeText(this, "Invalid part number", Toast.LENGTH_SHORT).show();
@@ -1636,6 +1661,7 @@ public class IDEActivity extends AppCompatActivity {
                 updateFullContentFromChunk();
                 int prevChunkStart = Math.max(0, currentChunkStart - CHUNK_SIZE);
                 loadChunkWithButtons(prevChunkStart);
+                return; // Don't let cursor move to button
             }
             // Check if clicked on "Load Next" button (last 50 chars)
             else if (cursorPos > text.length() - 50 && text.endsWith("▼▼▼")) {
@@ -1644,7 +1670,28 @@ public class IDEActivity extends AppCompatActivity {
                 if (nextChunkStart < fullFileContent.length()) {
                     loadChunkWithButtons(nextChunkStart);
                 }
+                return; // Don't let cursor move to button
             }
+        });
+        
+        // Prevent cursor from being placed in button areas
+        editor.setOnTouchListener((v, event) -> {
+            if (!isLargeFile) return false;
+            
+            if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                String text = editor.getText().toString();
+                int cursorPos = editor.getSelectionStart();
+                
+                // If cursor in button area, move it to safe zone
+                if (cursorPos < 50 && text.startsWith("▲▲▲")) {
+                    editor.setSelection(Math.min(50, text.length()));
+                    return true;
+                } else if (cursorPos > text.length() - 50 && text.endsWith("▼▼▼")) {
+                    editor.setSelection(Math.max(0, text.length() - 50));
+                    return true;
+                }
+            }
+            return false;
         });
     }
     
