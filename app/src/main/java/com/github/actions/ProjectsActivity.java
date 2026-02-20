@@ -198,6 +198,8 @@ public class ProjectsActivity extends AppCompatActivity {
         String[] projectArray = projects.split(";");
         StringBuilder validProjects = new StringBuilder();
         
+        com.github.actions.ui.UIEnhancer enhancer = new com.github.actions.ui.UIEnhancer(this);
+        
         for (String project : projectArray) {
             if (project.isEmpty()) continue;
             String[] parts = project.split("\\|");
@@ -211,16 +213,24 @@ public class ProjectsActivity extends AppCompatActivity {
             
             validProjects.append(name).append("|").append(path).append(";");
             
-            LinearLayout projectItem = new LinearLayout(this);
-            projectItem.setOrientation(LinearLayout.HORIZONTAL);
-            projectItem.setPadding(0, 5, 0, 5);
+            // Material 3 project card
+            LinearLayout projectCard = new LinearLayout(this);
+            projectCard.setOrientation(LinearLayout.HORIZONTAL);
+            projectCard.setPadding(16, 12, 16, 12);
+            projectCard.setBackground(enhancer.createCardBackground());
+            LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+            cardParams.setMargins(0, 8, 0, 8);
+            projectCard.setLayoutParams(cardParams);
             
             Button btn = new Button(this);
             btn.setText("📁 " + name);
-            btn.setTransformationMethod(null); // Prevent auto-capitalization
+            btn.setTransformationMethod(null);
             btn.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
             btn.setOnClickListener(v -> openProject(name, path));
-            projectItem.addView(btn);
+            enhancer.enhanceButton(btn, com.github.actions.ui.UIEnhancer.ButtonStyle.TEXT);
+            projectCard.addView(btn);
             
             Button btnEdit = new Button(this);
             btnEdit.setText("✏️");
@@ -229,7 +239,8 @@ public class ProjectsActivity extends AppCompatActivity {
             btnEdit.setMinimumWidth(0);
             btnEdit.setPadding(20, 0, 20, 0);
             btnEdit.setOnClickListener(v -> editProject(name, path));
-            projectItem.addView(btnEdit);
+            enhancer.enhanceButton(btnEdit, com.github.actions.ui.UIEnhancer.ButtonStyle.TEXT);
+            projectCard.addView(btnEdit);
             
             Button btnDelete = new Button(this);
             btnDelete.setText("🗑");
@@ -238,9 +249,10 @@ public class ProjectsActivity extends AppCompatActivity {
             btnDelete.setMinimumWidth(0);
             btnDelete.setPadding(20, 0, 20, 0);
             btnDelete.setOnClickListener(v -> deleteProject(name, path));
-            projectItem.addView(btnDelete);
+            enhancer.enhanceButton(btnDelete, com.github.actions.ui.UIEnhancer.ButtonStyle.TEXT);
+            projectCard.addView(btnDelete);
             
-            projectsList.addView(projectItem);
+            projectsList.addView(projectCard);
         }
         
         prefs.edit().putString("projects", validProjects.toString()).apply();

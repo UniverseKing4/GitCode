@@ -1177,9 +1177,8 @@ public class IDEActivity extends AppCompatActivity {
                 TextView empty = new TextView(this);
                 empty.setText("No files yet");
                 empty.setPadding(20, 20, 20, 20);
-                if (isDark) {
-                    empty.setTextColor(0xFFAAAAAA);
-                }
+                // Material 3 empty state color
+                empty.setTextColor(isDark ? 0xFFCAC4D0 : 0xFF49454F);
                 container.addView(empty);
             }
             return;
@@ -1228,9 +1227,8 @@ public class IDEActivity extends AppCompatActivity {
             arrow.setTextSize(12);
             arrow.setPadding(0, 10, 5, 0);
             arrow.setTag("collapsed");
-            if (isDark) {
-                arrow.setTextColor(0xFFE0E0E0);
-            }
+            // Material 3 text color
+            arrow.setTextColor(isDark ? 0xFFE6E1E5 : 0xFF1C1B1F);
             rowLayout.addView(arrow);
             
             TextView tv = new TextView(this);
@@ -1238,9 +1236,8 @@ public class IDEActivity extends AppCompatActivity {
             tv.setPadding(5, 10, 15, 10);
             tv.setTextSize(16);
             tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-            if (isDark) {
-                tv.setTextColor(0xFFE0E0E0);
-            }
+            // Material 3 text color
+            tv.setTextColor(isDark ? 0xFFE6E1E5 : 0xFF1C1B1F);
             
             tv.setOnLongClickListener(v -> {
                 if (!selectionMode) {
@@ -1292,9 +1289,8 @@ public class IDEActivity extends AppCompatActivity {
             tv.setPadding(15, 10, 15, 10);
             tv.setTextSize(16);
             tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-            if (isDark) {
-                tv.setTextColor(0xFFE0E0E0);
-            }
+            // Material 3 text color
+            tv.setTextColor(isDark ? 0xFFE6E1E5 : 0xFF1C1B1F);
             
             tv.setOnClickListener(v -> {
                 if (!selectionMode) {
