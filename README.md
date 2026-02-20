@@ -4,11 +4,11 @@
 
 **A fully-featured, professional mobile IDE for Android with GitHub integration, advanced code editing, large file support, and modern development tools.**
 
-[![Latest Release](https://img.shields.io/github/v/release/UniverseKing4/GitHubActionsApp)](https://github.com/UniverseKing4/GitHubActionsApp/releases)
+[![Latest Release](https://img.shields.io/github/v/release/UniverseKing4/GitCode)](https://github.com/UniverseKing4/GitCode/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Android](https://img.shields.io/badge/platform-Android-green.svg)](https://www.android.com/)
 
-[Download APK](https://github.com/UniverseKing4/GitHubActionsApp/releases/latest) • [Report Bug](https://github.com/UniverseKing4/GitHubActionsApp/issues) • [Request Feature](https://github.com/UniverseKing4/GitHubActionsApp/issues)
+[Download APK](https://github.com/UniverseKing4/GitCode/releases/latest) • [Report Bug](https://github.com/UniverseKing4/GitCode/issues) • [Request Feature](https://github.com/UniverseKing4/GitCode/issues)
 
 </div>
 
@@ -82,7 +82,7 @@ GitCode transforms your Android device into a powerful development environment. 
 ### Installation
 
 #### Option 1: Download Pre-built APK (Recommended)
-1. Go to [Releases](https://github.com/UniverseKing4/GitHubActionsApp/releases/latest)
+1. Go to [Releases](https://github.com/UniverseKing4/GitCode/releases/latest)
 2. Download the latest `app-release-signed.apk`
 3. Install on your Android device
 4. Grant necessary permissions when prompted
@@ -90,8 +90,8 @@ GitCode transforms your Android device into a powerful development environment. 
 #### Option 2: Build from Source
 ```bash
 # Clone the repository
-git clone https://github.com/UniverseKing4/GitHubActionsApp.git
-cd GitHubActionsApp
+git clone https://github.com/UniverseKing4/GitCode.git
+cd GitCode
 
 # Build with Gradle
 ./gradlew assembleRelease
@@ -218,7 +218,7 @@ Plain text files (`.txt`, `.md`, etc.) display without syntax highlighting.
 
 ### Project Structure
 ```
-GitHubActionsApp/
+GitCode/
 ├── app/src/main/
 │   ├── java/com/github/actions/
 │   │   ├── ProjectsActivity.java    # Home screen & project management
@@ -272,8 +272,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/UniverseKing4/GitHubActionsApp/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/UniverseKing4/GitHubActionsApp/discussions)
+- **Issues**: [GitHub Issues](https://github.com/UniverseKing4/GitCode/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/UniverseKing4/GitCode/discussions)
 
 ---
 
