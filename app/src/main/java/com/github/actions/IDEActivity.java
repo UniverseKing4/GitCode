@@ -1749,19 +1749,21 @@ public class IDEActivity extends AppCompatActivity {
             String text = editor.getText().toString();
             
             // Find all boundaries
+            int prevButtonStart = 0;
             int prevButtonEnd = 0;
-            int protectedLine1Start = -1, protectedLine1End = -1; // Line 2 after prev button
+            int protectedLine1Start = -1, protectedLine1End = -1; // Line 2 after prev button (empty line)
             int nextButtonStart = text.length();
-            int protectedLine2Start = -1, protectedLine2End = -1; // Line before next button
+            int protectedLine2Start = -1, protectedLine2End = -1; // ONLY the line immediately before next button
             
             if (text.startsWith("▲▲▲")) {
+                prevButtonStart = 0;
                 int firstNewline = text.indexOf("\n");
                 if (firstNewline > 0) {
-                    prevButtonEnd = firstNewline;
-                    protectedLine1Start = firstNewline + 1; // Start of line 2
+                    prevButtonEnd = firstNewline + 1; // Include the newline
+                    protectedLine1Start = firstNewline + 1; // Start of line 2 (empty line)
                     int secondNewline = text.indexOf("\n", firstNewline + 1);
                     if (secondNewline > 0) {
-                        protectedLine1End = secondNewline; // End of line 2 (before the newline)
+                        protectedLine1End = secondNewline + 1; // End of line 2 including newline
                     }
                 }
             }
@@ -1769,29 +1771,22 @@ public class IDEActivity extends AppCompatActivity {
             if (text.endsWith("▼▼▼")) {
                 int buttonStart = text.lastIndexOf("\n\n▼▼▼");
                 if (buttonStart > 0) {
-                    protectedLine2Start = buttonStart; // The first \n before button
-                    protectedLine2End = buttonStart + 1; // The second \n before button
+                    // Only the SECOND empty line (immediately before ▼▼▼) is protected
+                    protectedLine2Start = buttonStart + 1; // Start of second \n
+                    protectedLine2End = buttonStart + 2; // End of second \n
                     nextButtonStart = buttonStart + 2;
                 }
             }
             
-            // BLOCK ALL EVENTS on protected lines
-            if (protectedLine1Start >= 0 && offset >= protectedLine1Start && offset <= protectedLine1End) {
-                return true; // Consume ALL events on this line
-            }
-            if (protectedLine2Start >= 0 && offset >= protectedLine2Start && offset <= protectedLine2End) {
-                return true; // Consume ALL events on this line
-            }
-            
-            // Handle button clicks only on ACTION_DOWN
+            // Handle button clicks on ACTION_DOWN
             if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
-                // Check if clicked on Previous button
-                if (offset >= 0 && offset < prevButtonEnd && prevButtonEnd > 0) {
+                // Check if clicked on Previous button (entire ▲▲▲ line)
+                if (offset >= prevButtonStart && offset < prevButtonEnd && prevButtonEnd > 0) {
                     updateFullContentFromChunk();
                     int step = useLineBasedChunking ? CHUNK_LINES : CHUNK_SIZE;
                     int prevChunkStart = Math.max(0, currentChunkStart - step);
                     loadChunkWithButtons(prevChunkStart);
-                    return true;
+                    return true; // Consume event
                 }
                 
                 // Check if clicked on Next button
@@ -1802,20 +1797,34 @@ public class IDEActivity extends AppCompatActivity {
                     if (nextChunkStart < fullFileContent.length()) {
                         loadChunkWithButtons(nextChunkStart);
                     }
-                    return true;
+                    return true; // Consume event
+                }
+                
+                // BLOCK clicks on protected lines
+                if (protectedLine1Start >= 0 && offset >= protectedLine1Start && offset < protectedLine1End) {
+                    return true; // Consume event
+                }
+                if (protectedLine2Start >= 0 && offset >= protectedLine2Start && offset < protectedLine2End) {
+                    return true; // Consume event
                 }
             }
             
             return false;
         });
         
-        // Additional protection: move cursor away if it ends up on protected lines
-        editor.setOnClickListener(v -> {
-            if (!isLargeFile) return;
+        // Monitor cursor position and force it away from protected lines
+        editor.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             
-            android.os.Handler handler = new android.os.Handler();
-            handler.postDelayed(() -> {
-                String text = editor.getText().toString();
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                if (!isLargeFile) return;
+                
+                String text = s.toString();
                 int cursor = editor.getSelectionStart();
                 
                 int protectedLine1Start = -1, protectedLine1End = -1;
@@ -1827,7 +1836,7 @@ public class IDEActivity extends AppCompatActivity {
                         protectedLine1Start = firstNewline + 1;
                         int secondNewline = text.indexOf("\n", firstNewline + 1);
                         if (secondNewline > 0) {
-                            protectedLine1End = secondNewline;
+                            protectedLine1End = secondNewline + 1;
                         }
                     }
                 }
@@ -1835,23 +1844,23 @@ public class IDEActivity extends AppCompatActivity {
                 if (text.endsWith("▼▼▼")) {
                     int buttonStart = text.lastIndexOf("\n\n▼▼▼");
                     if (buttonStart > 0) {
-                        protectedLine2Start = buttonStart;
-                        protectedLine2End = buttonStart + 1;
+                        protectedLine2Start = buttonStart + 1;
+                        protectedLine2End = buttonStart + 2;
                     }
                 }
                 
-                // Move cursor away from protected lines
-                if (protectedLine1Start >= 0 && cursor >= protectedLine1Start && cursor <= protectedLine1End) {
-                    editor.setSelection(Math.min(protectedLine1End + 1, text.length()));
-                } else if (protectedLine2Start >= 0 && cursor >= protectedLine2Start && cursor <= protectedLine2End) {
-                    if (protectedLine2Start > 0) {
-                        editor.setSelection(protectedLine2Start - 1);
-                    }
+                // Force cursor away from protected lines
+                if (protectedLine1Start >= 0 && cursor >= protectedLine1Start && cursor < protectedLine1End) {
+                    editor.removeTextChangedListener(this);
+                    editor.setSelection(Math.min(protectedLine1End, text.length()));
+                    editor.addTextChangedListener(this);
+                } else if (protectedLine2Start >= 0 && cursor >= protectedLine2Start && cursor < protectedLine2End) {
+                    editor.removeTextChangedListener(this);
+                    editor.setSelection(Math.max(0, protectedLine2Start - 1));
+                    editor.addTextChangedListener(this);
                 }
-            }, 10);
+            }
         });
-        
-        // Remove the TextWatcher approach - using touch blocking instead
     }
     
     private void updateFullContentFromChunk() {
