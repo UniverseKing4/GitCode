@@ -1703,79 +1703,142 @@ public class IDEActivity extends AppCompatActivity {
     }
     
     private void setupLoadButtonClicks() {
+        // Handle button clicks
         editor.setOnTouchListener((v, event) -> {
             if (!isLargeFile) return false;
             
             if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
-                // Get touch position
                 int offset = editor.getOffsetForPosition(event.getX(), event.getY());
                 String text = editor.getText().toString();
                 
-                // Find button boundaries more precisely
-                int prevButtonStart = 0;
+                // Find button line boundaries
                 int prevButtonEnd = 0;
-                int prevButtonTotalEnd = 0; // Including the 2 empty lines
-                int nextButtonTotalStart = text.length(); // Including the 2 empty lines before button
                 int nextButtonStart = text.length();
-                int nextButtonEnd = text.length();
                 
-                // Previous button: "▲▲▲ TAP TO LOAD PREVIOUS (X/Y) ▲▲▲\n\n"
-                // Line 1: button text (clickable)
-                // Line 2-3: empty lines (not editable)
                 if (text.startsWith("▲▲▲")) {
-                    prevButtonStart = 0;
                     int firstNewline = text.indexOf("\n");
                     if (firstNewline > 0) {
-                        prevButtonEnd = firstNewline; // Only first line is clickable
-                        int doubleNewline = text.indexOf("\n\n");
-                        if (doubleNewline > 0) {
-                            prevButtonTotalEnd = doubleNewline + 2; // Total button area including empty lines
-                        }
+                        prevButtonEnd = firstNewline;
                     }
                 }
                 
-                // Next button: "\n\n▼▼▼ TAP TO LOAD NEXT (X/Y) ▼▼▼"
-                // Line 1-2: empty lines (not editable)
-                // Line 3: button text (clickable)
                 if (text.endsWith("▼▼▼")) {
-                    int buttonTextStart = text.lastIndexOf("\n\n▼▼▼");
-                    if (buttonTextStart > 0) {
-                        nextButtonTotalStart = buttonTextStart; // Start of empty lines
-                        nextButtonStart = buttonTextStart + 2; // Skip the 2 newlines
-                        nextButtonEnd = text.length();
+                    int buttonStart = text.lastIndexOf("\n\n▼▼▼");
+                    if (buttonStart > 0) {
+                        nextButtonStart = buttonStart + 2;
                     }
                 }
                 
-                // Check if clicked on Previous button text (only first line)
-                if (offset >= prevButtonStart && offset < prevButtonEnd && prevButtonEnd > 0) {
+                // Check if clicked on Previous button
+                if (offset >= 0 && offset < prevButtonEnd && prevButtonEnd > 0) {
                     updateFullContentFromChunk();
                     int prevChunkStart = Math.max(0, currentChunkStart - CHUNK_SIZE);
                     loadChunkWithButtons(prevChunkStart);
-                    return true; // Consume event
+                    return true;
                 }
                 
-                // Check if clicked on Next button text (only the line with ▼▼▼)
-                if (offset >= nextButtonStart && offset <= nextButtonEnd && nextButtonStart < text.length()) {
+                // Check if clicked on Next button
+                if (offset >= nextButtonStart && offset <= text.length() && nextButtonStart < text.length()) {
                     updateFullContentFromChunk();
                     int nextChunkStart = currentChunkStart + CHUNK_SIZE;
                     if (nextChunkStart < fullFileContent.length()) {
                         loadChunkWithButtons(nextChunkStart);
                     }
-                    return true; // Consume event
-                }
-                
-                // Prevent cursor placement on empty lines (line 2-3 of prev button)
-                if (offset >= prevButtonEnd && offset < prevButtonTotalEnd && prevButtonTotalEnd > 0) {
-                    return true; // Consume event, don't allow cursor here
-                }
-                
-                // Prevent cursor placement on empty lines (line 1-2 of next button)
-                if (offset >= nextButtonTotalStart && offset < nextButtonStart && nextButtonTotalStart < text.length()) {
-                    return true; // Consume event, don't allow cursor here
+                    return true;
                 }
             }
             
-            return false; // Let normal editing happen
+            return false;
+        });
+        
+        // Prevent cursor and editing on protected lines (line 2 after prev button, line before next button)
+        editor.addTextChangedListener(new android.text.TextWatcher() {
+            private int lastValidCursor = 0;
+            
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                if (!isLargeFile) return;
+                
+                String text = s.toString();
+                int cursor = editor.getSelectionStart();
+                
+                // Find protected line boundaries
+                int protectedStart1 = -1, protectedEnd1 = -1; // Line 2 after prev button
+                int protectedStart2 = -1, protectedEnd2 = -1; // Line before next button
+                
+                if (text.startsWith("▲▲▲")) {
+                    int firstNewline = text.indexOf("\n");
+                    if (firstNewline > 0) {
+                        protectedStart1 = firstNewline + 1; // Start of line 2
+                        int secondNewline = text.indexOf("\n", firstNewline + 1);
+                        if (secondNewline > 0) {
+                            protectedEnd1 = secondNewline + 1; // End of line 2 (includes newline)
+                        }
+                    }
+                }
+                
+                if (text.endsWith("▼▼▼")) {
+                    int buttonStart = text.lastIndexOf("\n\n▼▼▼");
+                    if (buttonStart > 0) {
+                        protectedStart2 = buttonStart; // Start of first empty line
+                        protectedEnd2 = buttonStart + 1; // End of first empty line (just the first \n)
+                    }
+                }
+                
+                // Check if cursor is in safe zone
+                boolean cursorSafe = true;
+                if (protectedStart1 >= 0 && cursor >= protectedStart1 && cursor < protectedEnd1) {
+                    cursorSafe = false;
+                }
+                if (protectedStart2 >= 0 && cursor >= protectedStart2 && cursor < protectedEnd2) {
+                    cursorSafe = false;
+                }
+                
+                if (cursorSafe) {
+                    lastValidCursor = cursor;
+                }
+            }
+            
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                if (!isLargeFile) return;
+                
+                int cursor = editor.getSelectionStart();
+                String text = s.toString();
+                
+                // Find protected line boundaries
+                int protectedStart1 = -1, protectedEnd1 = -1;
+                int protectedStart2 = -1, protectedEnd2 = -1;
+                
+                if (text.startsWith("▲▲▲")) {
+                    int firstNewline = text.indexOf("\n");
+                    if (firstNewline > 0) {
+                        protectedStart1 = firstNewline + 1;
+                        int secondNewline = text.indexOf("\n", firstNewline + 1);
+                        if (secondNewline > 0) {
+                            protectedEnd1 = secondNewline + 1;
+                        }
+                    }
+                }
+                
+                if (text.endsWith("▼▼▼")) {
+                    int buttonStart = text.lastIndexOf("\n\n▼▼▼");
+                    if (buttonStart > 0) {
+                        protectedStart2 = buttonStart;
+                        protectedEnd2 = buttonStart + 1;
+                    }
+                }
+                
+                // Move cursor away from protected lines
+                if (protectedStart1 >= 0 && cursor >= protectedStart1 && cursor < protectedEnd1) {
+                    editor.setSelection(Math.min(protectedEnd1, text.length()));
+                } else if (protectedStart2 >= 0 && cursor >= protectedStart2 && cursor < protectedEnd2) {
+                    editor.setSelection(Math.max(0, protectedStart2 - 1));
+                }
+            }
         });
     }
     
