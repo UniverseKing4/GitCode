@@ -1718,7 +1718,16 @@ public class IDEActivity extends AppCompatActivity {
             // Line 1: empty (no line number)
             // Line 2: empty (no line number)
             // Line 3: button text (no line number)
-            if (startPos + CHUNK_SIZE < fullFileContent.length()) {
+            boolean hasNextChunk;
+            if (useLineBasedChunking) {
+                String[] allLines = fullFileContent.split("\n", -1);
+                int endLine = currentChunkLine + CHUNK_LINES;
+                hasNextChunk = endLine < allLines.length;
+            } else {
+                hasNextChunk = startPos + CHUNK_SIZE < fullFileContent.length();
+            }
+            
+            if (hasNextChunk) {
                 sb.append("\n\n");
             }
             
@@ -1816,6 +1825,47 @@ public class IDEActivity extends AppCompatActivity {
         });
         
         // Monitor cursor position and force it away from protected lines INSTANTLY
+        editor.setOnClickListener(v -> {
+            if (!isLargeFile) return;
+            
+            // Check cursor position immediately after click
+            android.os.Handler handler = new android.os.Handler();
+            handler.post(() -> {
+                String text = editor.getText().toString();
+                int cursor = editor.getSelectionStart();
+                
+                int protectedLine1Start = -1, protectedLine1End = -1;
+                int protectedLine2Start = -1, protectedLine2End = -1;
+                
+                if (text.startsWith("▲▲▲")) {
+                    int firstNewline = text.indexOf("\n");
+                    if (firstNewline > 0) {
+                        protectedLine1Start = firstNewline + 1;
+                        int secondNewline = text.indexOf("\n", firstNewline + 1);
+                        if (secondNewline > 0) {
+                            protectedLine1End = secondNewline + 1;
+                        }
+                    }
+                }
+                
+                if (text.endsWith("▼▼▼")) {
+                    int buttonStart = text.lastIndexOf("\n\n▼▼▼");
+                    if (buttonStart > 0) {
+                        protectedLine2Start = buttonStart + 1;
+                        protectedLine2End = buttonStart + 2;
+                    }
+                }
+                
+                // Move cursor instantly
+                if (protectedLine1Start >= 0 && cursor >= protectedLine1Start && cursor < protectedLine1End) {
+                    editor.setSelection(Math.min(protectedLine1End, text.length()));
+                } else if (protectedLine2Start >= 0 && cursor >= protectedLine2Start && cursor < protectedLine2End) {
+                    editor.setSelection(Math.max(0, protectedLine2Start - 1));
+                }
+            });
+        });
+        
+        // Also monitor with TextWatcher for keyboard navigation
         editor.addTextChangedListener(new android.text.TextWatcher() {
             private boolean isMoving = false;
             
