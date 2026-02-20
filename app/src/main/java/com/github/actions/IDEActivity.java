@@ -1708,34 +1708,42 @@ public class IDEActivity extends AppCompatActivity {
                 int offset = editor.getOffsetForPosition(event.getX(), event.getY());
                 String text = editor.getText().toString();
                 
-                // Find button boundaries
+                // Find button boundaries more precisely
+                int prevButtonStart = 0;
                 int prevButtonEnd = 0;
                 int nextButtonStart = text.length();
+                int nextButtonEnd = text.length();
                 
+                // Previous button: "▲▲▲ TAP TO LOAD PREVIOUS (X/Y) ▲▲▲\n\n"
+                // Only the first line with ▲▲▲ should be clickable
                 if (text.startsWith("▲▲▲")) {
-                    int firstNewline = text.indexOf("\n\n");
+                    prevButtonStart = 0;
+                    int firstNewline = text.indexOf("\n");
                     if (firstNewline > 0) {
-                        prevButtonEnd = firstNewline + 2;
+                        prevButtonEnd = firstNewline; // Only first line is clickable
                     }
                 }
                 
+                // Next button: "\n\n▼▼▼ TAP TO LOAD NEXT (X/Y) ▼▼▼"
+                // Only the line with ▼▼▼ should be clickable, not the 2 empty lines before it
                 if (text.endsWith("▼▼▼")) {
-                    int lastNewline = text.lastIndexOf("\n\n▼▼▼");
-                    if (lastNewline > 0) {
-                        nextButtonStart = lastNewline;
+                    int buttonTextStart = text.lastIndexOf("\n\n▼▼▼");
+                    if (buttonTextStart > 0) {
+                        nextButtonStart = buttonTextStart + 2; // Skip the 2 newlines
+                        nextButtonEnd = text.length();
                     }
                 }
                 
-                // Check if clicked on Previous button
-                if (offset < prevButtonEnd && prevButtonEnd > 0) {
+                // Check if clicked on Previous button (only first line)
+                if (offset >= prevButtonStart && offset < prevButtonEnd && prevButtonEnd > 0) {
                     updateFullContentFromChunk();
                     int prevChunkStart = Math.max(0, currentChunkStart - CHUNK_SIZE);
                     loadChunkWithButtons(prevChunkStart);
                     return true; // Consume event
                 }
                 
-                // Check if clicked on Next button
-                if (offset >= nextButtonStart && nextButtonStart < text.length()) {
+                // Check if clicked on Next button (only the line with ▼▼▼)
+                if (offset >= nextButtonStart && offset <= nextButtonEnd && nextButtonStart < text.length()) {
                     updateFullContentFromChunk();
                     int nextChunkStart = currentChunkStart + CHUNK_SIZE;
                     if (nextChunkStart < fullFileContent.length()) {
