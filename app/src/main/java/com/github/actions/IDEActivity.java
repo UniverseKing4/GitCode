@@ -555,9 +555,25 @@ public class IDEActivity extends AppCompatActivity {
     
     @Override
     public void onBackPressed() {
-        // Auto-save before going back
+        // Save current file before going back
         if (currentFile != null) {
-            autoSaveFile();
+            try {
+                // For large files, update full content from current chunk first
+                if (isLargeFile) {
+                    updateFullContentFromChunk();
+                    java.io.FileWriter writer = new java.io.FileWriter(currentFile);
+                    writer.write(fullFileContent);
+                    writer.close();
+                } else {
+                    // For small files, save editor content directly
+                    String content = editor.getText().toString();
+                    java.io.FileWriter writer = new java.io.FileWriter(currentFile);
+                    writer.write(content);
+                    writer.close();
+                }
+            } catch (Exception e) {
+                Toast.makeText(this, "Failed to save: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
         }
         super.onBackPressed();
     }
@@ -1708,9 +1724,9 @@ public class IDEActivity extends AppCompatActivity {
         
         String currentText = editor.getText().toString();
         
-        // Remove load buttons from text
-        currentText = currentText.replaceFirst("^▲▲▲ TAP TO LOAD PREVIOUS ▲▲▲\\n\\n", "");
-        currentText = currentText.replaceFirst("\\n\\n▼▼▼ TAP TO LOAD NEXT ▼▼▼$", "");
+        // Remove load buttons from text (with part numbers)
+        currentText = currentText.replaceFirst("^▲▲▲ TAP TO LOAD PREVIOUS \\(\\d+/\\d+\\) ▲▲▲\\n\\n", "");
+        currentText = currentText.replaceFirst("\\n\\n▼▼▼ TAP TO LOAD NEXT \\(\\d+/\\d+\\) ▼▼▼$", "");
         
         String before = currentChunkStart > 0 ? fullFileContent.substring(0, currentChunkStart) : "";
         int chunkEnd = Math.min(currentChunkStart + CHUNK_SIZE, fullFileContent.length());
