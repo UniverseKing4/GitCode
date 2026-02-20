@@ -707,9 +707,9 @@ public class IDEActivity extends AppCompatActivity {
         if (view instanceof EditText) {
             ((EditText) view).setTextColor(0xFFFFFFFF);
             ((EditText) view).setHintTextColor(0xFF888888);
-        } else if (view instanceof Button) {
+        } else if (view instanceof android.widget.Button) {
             // Keep button text black for visibility
-            ((Button) view).setTextColor(0xFF000000);
+            ((android.widget.Button) view).setTextColor(0xFF000000);
         } else if (view instanceof TextView) {
             ((TextView) view).setTextColor(0xFFFFFFFF);
         }
