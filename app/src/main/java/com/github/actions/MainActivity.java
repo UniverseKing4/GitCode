@@ -71,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void animateContent() {
-        View content = findViewById(R.id.etUsername).getParent().getParent().getParent();
+        View content = (View) findViewById(R.id.etUsername).getParent().getParent().getParent();
         content.setAlpha(0f);
         content.animate()
             .alpha(1f)
