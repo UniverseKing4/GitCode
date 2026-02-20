@@ -350,6 +350,7 @@ public class ProjectsActivity extends AppCompatActivity {
                 
                 Button btn = new Button(this);
                 btn.setText((username.equals(activeProfile) ? "✓ " : "") + username);
+                btn.setAllCaps(false); // Preserve case sensitivity
                 btn.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
                 row.addView(btn);
                 

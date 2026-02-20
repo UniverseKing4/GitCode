@@ -89,8 +89,8 @@ public class IDEActivity extends AppCompatActivity {
             mainLayout.setBackgroundColor(0xFF1E1E1E);
         }
         
-        // Tab bar
-        ScrollView tabScroll = new ScrollView(this);
+        // Tab bar with horizontal scrolling
+        HorizontalScrollView tabScroll = new HorizontalScrollView(this);
         tabScroll.setHorizontalScrollBarEnabled(false);
         tabScroll.setLayoutParams(new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
