@@ -676,17 +676,22 @@ public class IDEActivity extends AppCompatActivity {
     }
     
     private AlertDialog showThemedDialog(AlertDialog.Builder builder) {
-        AlertDialog dialog = builder.create();
-        dialog.show();
-        
-        // Apply dark theme asynchronously to avoid freezing
         SharedPreferences themePrefs = getSharedPreferences("GitCodeTheme", MODE_PRIVATE);
         boolean isDark = themePrefs.getBoolean("darkMode", true);
         
+        AlertDialog dialog = builder.create();
+        
+        // Apply dark theme BEFORE showing to prevent flash
+        if (isDark && dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF2D2D2D));
+        }
+        
+        dialog.show();
+        
+        // Apply text colors after showing
         if (isDark && dialog.getWindow() != null) {
             new android.os.Handler().post(() -> {
                 try {
-                    dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF2D2D2D));
                     android.view.ViewGroup root = (android.view.ViewGroup) dialog.getWindow().getDecorView();
                     applyDarkTheme(root);
                 } catch (Exception e) {
