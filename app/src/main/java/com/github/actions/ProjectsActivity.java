@@ -472,7 +472,7 @@ public class ProjectsActivity extends AppCompatActivity {
                         if (row.getChildAt(1) instanceof Button) {
                             Button btnDel = (Button) row.getChildAt(1);
                             btnDel.setOnClickListener(v -> {
-                                createThemedDialog()
+                                new AlertDialog.Builder(this)
                                     .setTitle("Delete Profile")
                                     .setMessage("Delete profile: " + username + "?")
                                     .setPositiveButton("Delete", (d, w) -> {
@@ -498,7 +498,7 @@ public class ProjectsActivity extends AppCompatActivity {
             addProfile();
         });
         
-        showThemedDialog(builder);
+        dialog.show();
     }
 
     private void addProfile() {
