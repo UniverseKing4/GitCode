@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Material Design 3 - Light Theme -->
+    <color name="md_theme_light_primary">#1976D2</color>
+    <color name="md_theme_light_onPrimary">#FFFFFF</color>
+    <color name="md_theme_light_secondary">#03DAC6</color>
+    <color name="md_theme_light_onSecondary">#000000</color>
+    <color name="md_theme_light_background">#FFFFFF</color>
+    <color name="md_theme_light_onBackground">#000000</color>
+    <color name="md_theme_light_surface">#FFFFFF</color>
+    <color name="md_theme_light_onSurface">#000000</color>
+    
+    <!-- Material Design 3 - Dark Theme -->
+    <color name="md_theme_dark_primary">#BB86FC</color>
+    <color name="md_theme_dark_onPrimary">#000000</color>
+    <color name="md_theme_dark_secondary">#03DAC6</color>
+    <color name="md_theme_dark_onSecondary">#000000</color>
+    <color name="md_theme_dark_background">#121212</color>
+    <color name="md_theme_dark_onBackground">#FFFFFF</color>
+    <color name="md_theme_dark_surface">#1E1E1E</color>
+    <color name="md_theme_dark_onSurface">#FFFFFF</color>
+    
+    <!-- Syntax Highlighting - Dark -->
+    <color name="syntax_dark_keyword">#FF79C6</color>
+    <color name="syntax_dark_string">#50FA7B</color>
+    <color name="syntax_dark_comment">#6272A4</color>
+    <color name="syntax_dark_number">#BD93F9</color>
+    <color name="syntax_dark_function">#8BE9FD</color>
+    
+    <!-- Syntax Highlighting - Light -->
+    <color name="syntax_light_keyword">#0000FF</color>
+    <color name="syntax_light_string">#008000</color>
+    <color name="syntax_light_comment">#808080</color>
+    <color name="syntax_light_number">#FF6600</color>
+    <color name="syntax_light_function">#0080FF</color>
+</resources>
