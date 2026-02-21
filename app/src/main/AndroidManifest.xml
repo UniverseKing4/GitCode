@@ -10,7 +10,8 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="GitCode"
-        android:theme="@style/Theme.AppCompat.Light">
+        android:theme="@style/Theme.AppCompat.Light"
+        android:requestLegacyExternalStorage="true">
         <activity
             android:name=".ProjectsActivity"
             android:exported="true">
