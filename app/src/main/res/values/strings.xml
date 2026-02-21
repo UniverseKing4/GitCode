@@ -119,7 +119,7 @@
     <!-- GitHub Profiles -->
     <string name="profiles_title">GitHub Profiles</string>
     <string name="no_profiles">No profiles yet</string>
-    <string name="add_profile">Add Profile</add_profile>
+    <string name="add_profile">Add Profile</string>
     <string name="profile_added">Profile added</string>
     <string name="profile_deleted">Profile deleted</string>
     <string name="active_profile">Active: %s</string>
