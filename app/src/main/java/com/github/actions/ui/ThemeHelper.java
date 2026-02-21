@@ -56,7 +56,7 @@ public class ThemeHelper {
 
         // Light status bar flags
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            int decorView = window.getDecorView();
+            View decorView = window.getDecorView();
             int flags = decorView.getSystemUiVisibility();
             if (isDark) {
                 flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
@@ -68,7 +68,7 @@ public class ThemeHelper {
 
         // Light navigation bar flags (API 26+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            int decorView = window.getDecorView();
+            View decorView = window.getDecorView();
             int flags = decorView.getSystemUiVisibility();
             if (isDark) {
                 flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;

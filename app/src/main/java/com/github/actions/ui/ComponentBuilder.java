@@ -139,6 +139,12 @@ public class ComponentBuilder {
         return new ButtonBuilder();
     }
 
+    public static enum ButtonStyle {
+        PRIMARY,
+        OUTLINE,
+        TEXT
+    }
+
     public class ButtonBuilder {
         private String text = "";
         private ButtonStyle style = ButtonStyle.PRIMARY;
@@ -151,12 +157,6 @@ public class ComponentBuilder {
         private int minHeight = 48;
         private int textSize = 14;
         private View.OnClickListener onClickListener = null;
-
-        public enum ButtonStyle {
-            PRIMARY,
-            OUTLINE,
-            TEXT
-        }
 
         public ButtonBuilder text(String text) {
             this.text = text;
@@ -351,6 +351,13 @@ public class ComponentBuilder {
         return new TextViewBuilder();
     }
 
+    public static enum TextType {
+        HEADLINE_1, HEADLINE_2, HEADLINE_3, HEADLINE_4,
+        HEADLINE_5, HEADLINE_6,
+        SUBTITLE_1, SUBTITLE_2,
+        BODY, CAPTION, OVERLINE
+    }
+
     public class TextViewBuilder {
         private String text = "";
         private TextType type = TextType.BODY;
@@ -361,13 +368,6 @@ public class ComponentBuilder {
         private int paddingBottom = 0;
         private boolean bold = false;
         private int gravity = Gravity.START;
-
-        public enum TextType {
-            HEADLINE_1, HEADLINE_2, HEADLINE_3, HEADLINE_4,
-            HEADLINE_5, HEADLINE_6,
-            SUBTITLE_1, SUBTITLE_2,
-            BODY, CAPTION, OVERLINE
-        }
 
         public TextViewBuilder text(String text) {
             this.text = text;
